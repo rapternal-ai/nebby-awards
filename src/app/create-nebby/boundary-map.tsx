@@ -13,16 +13,10 @@ interface BoundaryMapProps {
 export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const [mounted, setMounted] = useState(false);
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
 
-  // Wait one tick so the container is fully in the DOM
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
 
   async function handleSearch() {
     if (!query.trim() || !mapInstanceRef.current) return;
@@ -64,7 +58,7 @@ export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
   }
 
   useEffect(() => {
-    if (!mounted || !mapRef.current) return;
+    if (!mapRef.current) return;
 
     // Prevent double-init (React strict mode)
     if (mapInstanceRef.current) return;
@@ -154,7 +148,7 @@ export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
       mapInstanceRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted]);
+  }, []);
 
   return (
     <div className="relative h-full w-full">

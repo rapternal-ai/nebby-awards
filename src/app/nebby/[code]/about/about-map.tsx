@@ -9,18 +9,12 @@ export default function AboutMap() {
   const { activeNebby, activeMembers } = useNebbys();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const [mounted, setMounted] = useState(false);
 
   const boundary = activeNebby?.boundary ?? [];
 
-  // Wait one tick so the container is fully in the DOM
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
 
   useEffect(() => {
-    if (!mounted || !mapRef.current) return;
+    if (!mapRef.current) return;
 
     // Clean up previous instance safely
     if (mapInstanceRef.current) {
@@ -101,7 +95,7 @@ export default function AboutMap() {
       mapInstanceRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted, activeNebby?.shortCode]);
+  }, [activeNebby?.shortCode]);
 
   return <div ref={mapRef} className="h-full w-full" />;
 }
