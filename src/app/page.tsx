@@ -1,11 +1,27 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { Shield, Users, Award, Eye, MessageCircle, Lock, Trophy } from "lucide-react";
 import { useDemoAuth } from "@/lib/demo-auth";
+
+const heroSlides = [
+  {
+    src: "/hero-flowers.jpg",
+    alt: "A woman smiling among vibrant dahlias in a flower garden",
+    award: "Best Home Garden",
+    pseudonym: "spf-NebbyMember-04",
+  },
+  {
+    src: "/hero-garden.jpg",
+    alt: "A woman holding a fresh bouquet in her vegetable garden",
+    award: "Neighborhood MVP",
+    pseudonym: "spf-NebbyMember-02",
+  },
+];
 
 export default function LandingPage() {
   const { user } = useDemoAuth();
@@ -55,39 +71,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Right: hero image with award badge */}
-            <div className="relative flex-shrink-0 w-full max-w-md lg:max-w-lg">
-              <div className="relative overflow-hidden rounded-2xl shadow-2xl border-4 border-white/20">
-                <Image
-                  src="/hero-lawn.jpg"
-                  alt="Neighbors tending to a pristine lawn on a sunny day"
-                  width={600}
-                  height={400}
-                  className="w-full h-auto object-cover"
-                  priority
-                />
-                {/* Dark gradient overlay at bottom for readability */}
-                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
-              </div>
-
-              {/* Award badge overlay */}
-              <div className="absolute -bottom-4 -right-4 sm:-bottom-5 sm:-right-5 flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-3 shadow-lg transform rotate-3 border-2 border-amber-300">
-                <Trophy className="h-6 w-6 text-amber-900" />
-                <div>
-                  <p className="text-xs font-bold text-amber-900 uppercase tracking-wide">
-                    2025 Winner
-                  </p>
-                  <p className="text-sm font-bold text-amber-950">
-                    Best Lawn Care
-                  </p>
-                </div>
-              </div>
-
-              {/* Small pseudonym tag */}
-              <div className="absolute top-3 left-3 rounded-full bg-white/90 backdrop-blur px-3 py-1 text-xs font-semibold text-emerald-700 shadow">
-                spf-NebbyMember-04
-              </div>
-            </div>
+            {/* Right: hero image carousel with award badge */}
+            <HeroCarousel />
           </div>
         </div>
       </section>
@@ -178,6 +163,87 @@ export default function LandingPage() {
           <p>&copy; 2025 The Nebby Awards. Built for neighbors, by neighbors.</p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function HeroCarousel() {
+  const [active, setActive] = useState(0);
+
+  const next = useCallback(() => {
+    setActive((i) => (i + 1) % heroSlides.length);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(next, 5000);
+    return () => clearInterval(timer);
+  }, [next]);
+
+  const slide = heroSlides[active];
+
+  return (
+    <div className="relative flex-shrink-0 w-full max-w-md lg:max-w-lg">
+      {/* Image container */}
+      <div
+        className="relative overflow-hidden rounded-2xl shadow-2xl border-4 border-white/20 cursor-pointer"
+        onClick={next}
+        role="button"
+        aria-label="Next image"
+      >
+        {heroSlides.map((s, i) => (
+          <Image
+            key={s.src}
+            src={s.src}
+            alt={s.alt}
+            width={600}
+            height={400}
+            className={`w-full h-auto object-cover transition-opacity duration-700 ${
+              i === active ? "opacity-100" : "opacity-0 absolute inset-0"
+            }`}
+            priority={i === 0}
+          />
+        ))}
+        {/* Dark gradient overlay at bottom */}
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
+      </div>
+
+      {/* Award badge overlay */}
+      <div
+        key={slide.award}
+        className="absolute -bottom-4 -right-4 sm:-bottom-5 sm:-right-5 flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-3 shadow-lg transform rotate-3 border-2 border-amber-300 transition-all duration-500"
+      >
+        <Trophy className="h-6 w-6 text-amber-900" />
+        <div>
+          <p className="text-xs font-bold text-amber-900 uppercase tracking-wide">
+            2025 Winner
+          </p>
+          <p className="text-sm font-bold text-amber-950">
+            {slide.award}
+          </p>
+        </div>
+      </div>
+
+      {/* Small pseudonym tag */}
+      <div className="absolute top-3 left-3 rounded-full bg-white/90 backdrop-blur px-3 py-1 text-xs font-semibold text-emerald-700 shadow transition-all duration-500">
+        {slide.pseudonym}
+      </div>
+
+      {/* Dots */}
+      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 sm:-bottom-5">
+        {heroSlides.map((_, i) => (
+          <button
+            key={i}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActive(i);
+            }}
+            className={`h-2 rounded-full transition-all duration-300 ${
+              i === active ? "w-5 bg-white" : "w-2 bg-white/50"
+            }`}
+            aria-label={`Show image ${i + 1}`}
+          />
+        ))}
+      </div>
     </div>
   );
 }
