@@ -1,0 +1,76 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Shield } from "lucide-react";
+import { useDemoAuth } from "@/lib/demo-auth";
+
+export default function SignUpPage() {
+  const [email, setEmail] = useState("");
+  const { signIn } = useDemoAuth();
+  const router = useRouter();
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    signIn(email || "member@demo.com");
+    router.push("/nebby/spf/feed");
+  }
+
+  return (
+    <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <Shield className="mx-auto h-8 w-8 text-emerald-600 mb-2" />
+          <h1 className="text-xl font-bold text-zinc-900">Create your account</h1>
+          <p className="text-sm text-zinc-500">Join your neighborhood community</p>
+        </CardHeader>
+        <CardBody>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-zinc-700 mb-1">
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-zinc-400">
+                Your email is used for sign-in only. It&apos;s never shown to other members.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-zinc-700 mb-1">
+                Password
+              </label>
+              <Input id="password" type="password" placeholder="Choose a strong password" />
+            </div>
+
+            {/* Demo hint */}
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+              <strong>Demo mode:</strong> No real account is created. You&apos;ll be signed in
+              with demo data.
+            </div>
+
+            <Button type="submit" className="w-full">
+              Create account
+            </Button>
+          </form>
+
+          <p className="mt-4 text-center text-sm text-zinc-500">
+            Already have an account?{" "}
+            <Link href="/auth/signin" className="font-medium text-emerald-600 hover:text-emerald-700">
+              Sign in
+            </Link>
+          </p>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}
