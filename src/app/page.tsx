@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
-import { Shield, Users, Award, Eye, MessageCircle, Lock } from "lucide-react";
+import { Shield, Users, Award, Eye, MessageCircle, Lock, Trophy } from "lucide-react";
 import { useDemoAuth } from "@/lib/demo-auth";
 
 export default function LandingPage() {
@@ -14,40 +15,79 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 text-white">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyem0wLTR2Mkg0VjMwaDMyem0tMjAtNHYySDR2LTJoMTJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
-        <div className="relative mx-auto max-w-5xl px-4 py-20 sm:py-28 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-medium backdrop-blur mb-6">
-            <Shield className="h-4 w-4" />
-            Private. Pseudonymous. Local.
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            The Nebby Awards
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-emerald-100 sm:text-xl">
-            A private neighborhood platform where you connect with your
-            community, share updates, and celebrate your neighbors — all under
-            a friendly pseudonym.
-          </p>
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            {user ? (
-              <Link href="/nebby/spf/feed">
-                <Button size="lg" className="bg-white text-emerald-700 hover:bg-emerald-50">
-                  Go to your Nebby
-                </Button>
-              </Link>
-            ) : (
-              <>
-                <Link href="/auth/signup">
-                  <Button size="lg" className="bg-white text-emerald-700 hover:bg-emerald-50">
-                    Join your neighborhood
-                  </Button>
-                </Link>
-                <Link href="/auth/signin">
-                  <Button variant="ghost" size="lg" className="text-white hover:bg-white/10">
-                    Sign in
-                  </Button>
-                </Link>
-              </>
-            )}
+        <div className="relative mx-auto max-w-5xl px-4 py-16 sm:py-24">
+          <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:gap-12">
+            {/* Left: text */}
+            <div className="flex-1 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-medium backdrop-blur mb-6">
+                <Shield className="h-4 w-4" />
+                Private. Pseudonymous. Local.
+              </div>
+              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+                The Nebby Awards
+              </h1>
+              <p className="mx-auto mt-4 max-w-2xl text-lg text-emerald-100 sm:text-xl lg:mx-0">
+                A private neighborhood platform where you connect with your
+                community, share updates, and celebrate your neighbors — all under
+                a friendly pseudonym.
+              </p>
+              <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
+                {user ? (
+                  <Link href="/nebby/spf/feed">
+                    <Button size="lg" className="bg-white text-emerald-700 hover:bg-emerald-50">
+                      Go to your Nebby
+                    </Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/auth/signup">
+                      <Button size="lg" className="bg-white text-emerald-700 hover:bg-emerald-50">
+                        Join your neighborhood
+                      </Button>
+                    </Link>
+                    <Link href="/auth/signin">
+                      <Button variant="ghost" size="lg" className="text-white hover:bg-white/10">
+                        Sign in
+                      </Button>
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Right: hero image with award badge */}
+            <div className="relative flex-shrink-0 w-full max-w-md lg:max-w-lg">
+              <div className="relative overflow-hidden rounded-2xl shadow-2xl border-4 border-white/20">
+                <Image
+                  src="/hero-lawn.jpg"
+                  alt="Neighbors tending to a pristine lawn on a sunny day"
+                  width={600}
+                  height={400}
+                  className="w-full h-auto object-cover"
+                  priority
+                />
+                {/* Dark gradient overlay at bottom for readability */}
+                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
+              </div>
+
+              {/* Award badge overlay */}
+              <div className="absolute -bottom-4 -right-4 sm:-bottom-5 sm:-right-5 flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-3 shadow-lg transform rotate-3 border-2 border-amber-300">
+                <Trophy className="h-6 w-6 text-amber-900" />
+                <div>
+                  <p className="text-xs font-bold text-amber-900 uppercase tracking-wide">
+                    2025 Winner
+                  </p>
+                  <p className="text-sm font-bold text-amber-950">
+                    Best Lawn Care
+                  </p>
+                </div>
+              </div>
+
+              {/* Small pseudonym tag */}
+              <div className="absolute top-3 left-3 rounded-full bg-white/90 backdrop-blur px-3 py-1 text-xs font-semibold text-emerald-700 shadow">
+                spf-NebbyMember-04
+              </div>
+            </div>
           </div>
         </div>
       </section>
