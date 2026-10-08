@@ -16,9 +16,9 @@ const heroSlides = [
     pseudonym: "spf-NebbyMember-04",
   },
   {
-    src: "/hero-garden.jpg",
-    alt: "A woman holding a fresh bouquet in her vegetable garden",
-    award: "Neighborhood MVP",
+    src: "/hero-lawn.jpg",
+    alt: "A couple tending to their pristine lawn on a sunny day",
+    award: "Best Lawn Care",
     pseudonym: "spf-NebbyMember-02",
   },
 ];
