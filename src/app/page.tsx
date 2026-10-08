@@ -34,19 +34,19 @@ export default function LandingPage() {
               <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
                 {user ? (
                   <Link href="/nebby/spf/feed">
-                    <Button size="lg" className="bg-white text-emerald-700 hover:bg-emerald-50">
+                    <Button variant="hero" size="lg">
                       Go to your Nebby
                     </Button>
                   </Link>
                 ) : (
                   <>
                     <Link href="/auth/signup">
-                      <Button size="lg" className="bg-white text-emerald-700 hover:bg-emerald-50">
+                      <Button variant="hero" size="lg">
                         Join your neighborhood
                       </Button>
                     </Link>
                     <Link href="/auth/signin">
-                      <Button variant="ghost" size="lg" className="text-white hover:bg-white/10">
+                      <Button variant="ghost" size="lg" className="!text-white hover:!bg-white/10">
                         Sign in
                       </Button>
                     </Link>
