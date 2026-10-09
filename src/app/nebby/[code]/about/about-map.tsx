@@ -3,19 +3,36 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { demoNebby, demoMembers } from "@/lib/demo-data";
+import { useNebbys } from "@/lib/nebby-context";
 
 export default function AboutMap() {
+  const { activeNebby, activeMembers } = useNebbys();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
+  const boundary = activeNebby?.boundary ?? [];
+  const nebbyName = activeNebby?.name ?? "Neighborhood";
+
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return;
+    if (!mapRef.current) return;
+
+    // Clean up previous instance
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+
+    const center: L.LatLngExpression = boundary.length > 0
+      ? [
+          boundary.reduce((s, b) => s + b[0], 0) / boundary.length,
+          boundary.reduce((s, b) => s + b[1], 0) / boundary.length,
+        ]
+      : [40.4406, -79.9959];
 
     const map = L.map(mapRef.current, {
       zoomControl: true,
       scrollWheelZoom: false,
-    }).setView([40.4406, -79.9959], 15);
+    }).setView(center, 15);
     mapInstanceRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -23,18 +40,22 @@ export default function AboutMap() {
       maxZoom: 19,
     }).addTo(map);
 
-    const polygon = L.polygon(
-      demoNebby.boundary as L.LatLngExpression[],
-      {
-        color: "#059669",
-        fillColor: "#059669",
-        fillOpacity: 0.15,
-        weight: 2,
-      },
-    ).addTo(map);
+    if (boundary.length >= 3) {
+      const polygon = L.polygon(
+        boundary as L.LatLngExpression[],
+        {
+          color: "#059669",
+          fillColor: "#059669",
+          fillOpacity: 0.15,
+          weight: 2,
+        },
+      ).addTo(map);
+
+      map.fitBounds(polygon.getBounds().pad(0.1));
+    }
 
     // Add approximate member pins (block-level, not exact address)
-    const membersWithLocation = demoMembers.filter(
+    const membersWithLocation = activeMembers.filter(
       (m) => m.status === "approved" && m.approxLocation,
     );
 
@@ -58,13 +79,12 @@ export default function AboutMap() {
         );
     });
 
-    map.fitBounds(polygon.getBounds().pad(0.1));
-
     return () => {
       map.remove();
       mapInstanceRef.current = null;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNebby?.shortCode]);
 
   return <div ref={mapRef} className="h-full w-full" />;
 }

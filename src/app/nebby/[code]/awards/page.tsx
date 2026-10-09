@@ -22,12 +22,10 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import {
-  demoAwardSeason,
-  demoMembers,
-} from "@/lib/demo-data";
+import { demoAwardSeason } from "@/lib/demo-data";
 import { useCategories } from "@/lib/categories-context";
 import { useAwards } from "@/lib/awards-context";
+import { useNebbys } from "@/lib/nebby-context";
 import { formatDate } from "@/lib/utils";
 import type { AwardPhase, Nomination } from "@/types";
 
@@ -182,6 +180,7 @@ function NominateView({
 }) {
   const { categories } = useCategories();
   const { nominations, addNomination } = useAwards();
+  const { activeMembers } = useNebbys();
   const [explanation, setExplanation] = useState("");
   const [selectedNominee, setSelectedNominee] = useState("");
   const [nomineeType, setNomineeType] = useState<"member" | "non-member">("member");
@@ -244,7 +243,7 @@ function NominateView({
   function handleSubmit() {
     if (!canSubmit) return;
     if (nomineeType === "member") {
-      const member = demoMembers.find((m) => m.id === selectedNominee);
+      const member = activeMembers.find((m) => m.id === selectedNominee);
       if (!member) return;
       addNomination({
         categoryId: category!.id,
@@ -363,7 +362,7 @@ function NominateView({
                 className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               >
                 <option value="">Select a neighbor...</option>
-                {demoMembers.map((m) => (
+                {activeMembers.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.username}
                   </option>

@@ -3,7 +3,7 @@
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { demoNebby, demoMembers } from "@/lib/demo-data";
+import { useNebbys } from "@/lib/nebby-context";
 import { useCategories } from "@/lib/categories-context";
 import { formatDate } from "@/lib/utils";
 import {
@@ -21,22 +21,25 @@ const AboutMap = dynamic(() => import("./about-map"), { ssr: false });
 
 export default function AboutPage() {
   const { categories } = useCategories();
+  const { activeNebby, activeMembers } = useNebbys();
   return (
     <div className="space-y-6">
       {/* Description */}
       <Card>
         <CardBody>
-          <p className="text-zinc-700">{demoNebby.description}</p>
+          <p className="text-zinc-700">
+            {activeNebby?.description || "No description yet."}
+          </p>
           <div className="mt-4 flex flex-wrap gap-4 text-sm text-zinc-500">
             <span className="flex items-center gap-1.5">
-              <Users className="h-4 w-4" /> {demoNebby.memberCount} members
+              <Users className="h-4 w-4" /> {activeMembers.length} member{activeMembers.length !== 1 ? "s" : ""}
             </span>
             <span className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4" /> Created{" "}
-              {formatDate(demoNebby.createdAt)}
+              {activeNebby ? formatDate(activeNebby.createdAt) : "—"}
             </span>
             <span className="flex items-center gap-1.5">
-              <MapPin className="h-4 w-4" /> {demoNebby.shortCode}
+              <MapPin className="h-4 w-4" /> {activeNebby?.shortCode ?? "—"}
             </span>
           </div>
         </CardBody>
@@ -70,7 +73,7 @@ export default function AboutPage() {
         </CardHeader>
         <CardBody>
           <div className="grid gap-2 sm:grid-cols-2">
-            {demoMembers.map((m) => (
+            {activeMembers.map((m) => (
               <div
                 key={m.id}
                 className="flex items-center gap-3 rounded-lg border border-zinc-100 p-3"

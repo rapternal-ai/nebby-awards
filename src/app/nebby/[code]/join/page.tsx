@@ -14,13 +14,14 @@ import {
   UserPlus,
   Send,
 } from "lucide-react";
-import { demoNebby } from "@/lib/demo-data";
+import { useNebbys } from "@/lib/nebby-context";
 
 type JoinState = "not-requested" | "pending" | "approved";
 
 export default function JoinPage() {
   const params = useParams();
   const code = params.code as string;
+  const { activeNebby } = useNebbys();
   const [state, setState] = useState<JoinState>("not-requested");
   const [vouchCount, setVouchCount] = useState(0);
 
@@ -37,7 +38,7 @@ export default function JoinPage() {
           <Shield className="h-8 w-8 text-emerald-600" />
         </div>
         <h1 className="text-2xl font-bold text-zinc-900">
-          Join {demoNebby.name}
+          Join {activeNebby?.name ?? code}
         </h1>
         <p className="mt-2 text-zinc-500">
           This is a private neighborhood community. Joining requires
@@ -186,7 +187,7 @@ export default function JoinPage() {
               <CheckCircle2 className="h-6 w-6 text-emerald-600" />
             </div>
             <h2 className="font-semibold text-zinc-900">
-              Welcome to {demoNebby.name}!
+              Welcome to {activeNebby?.name ?? code}!
             </h2>
             <p className="text-sm text-zinc-500">
               You&apos;ve been approved! Your pseudonym is:

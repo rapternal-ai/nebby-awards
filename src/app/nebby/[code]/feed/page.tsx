@@ -18,7 +18,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { demoPosts, demoComments, currentDemoUser } from "@/lib/demo-data";
+import { demoComments } from "@/lib/demo-data";
+import { useNebbys } from "@/lib/nebby-context";
 import { timeAgo } from "@/lib/utils";
 import type { Post, Comment as CommentType, Reaction } from "@/types";
 
@@ -30,9 +31,13 @@ const REACTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function FeedPage() {
+  const { activeNebbyCode, activeNebby, activeMembers, activePosts } = useNebbys();
   const [newPost, setNewPost] = useState("");
-  const [posts, setPosts] = useState<Post[]>(demoPosts);
+  const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const [showComposer, setShowComposer] = useState(false);
+
+  const currentUsername = activeMembers[0]?.username ?? `${activeNebbyCode}-NebbyMember-01`;
+  const posts = [...localPosts, ...activePosts];
 
   function handleCreatePost(e: React.FormEvent) {
     e.preventDefault();
@@ -40,8 +45,8 @@ export default function FeedPage() {
 
     const post: Post = {
       id: `post-new-${Date.now()}`,
-      nebbyId: "nebby-sprucefield",
-      authorUsername: currentDemoUser.username,
+      nebbyId: activeNebby?.id ?? `nebby-${activeNebbyCode}`,
+      authorUsername: currentUsername,
       body: newPost.trim(),
       status: "visible",
       reactions: [],
@@ -50,7 +55,7 @@ export default function FeedPage() {
       updatedAt: new Date().toISOString(),
     };
 
-    setPosts([post, ...posts]);
+    setLocalPosts([post, ...localPosts]);
     setNewPost("");
     setShowComposer(false);
   }
@@ -71,7 +76,7 @@ export default function FeedPage() {
           onClick={() => setShowComposer(true)}
         >
           <CardBody className="flex items-center gap-3">
-            <Avatar username={currentDemoUser.username} size="sm" />
+            <Avatar username={currentUsername} size="sm" />
             <span className="text-sm text-zinc-400">
               What&apos;s happening in the neighborhood?
             </span>
@@ -82,7 +87,7 @@ export default function FeedPage() {
           <CardBody>
             <form onSubmit={handleCreatePost}>
               <div className="flex gap-3">
-                <Avatar username={currentDemoUser.username} size="sm" />
+                <Avatar username={currentUsername} size="sm" />
                 <div className="flex-1">
                   <Textarea
                     placeholder="Share an update with your neighbors..."
@@ -93,7 +98,7 @@ export default function FeedPage() {
                   />
                   <div className="mt-2 flex justify-between items-center">
                     <p className="text-xs text-zinc-400">
-                      Posting as {currentDemoUser.username}
+                      Posting as {currentUsername}
                     </p>
                     <div className="flex gap-2">
                       <Button
@@ -120,14 +125,24 @@ export default function FeedPage() {
       )}
 
       {/* Posts */}
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
-      ))}
+      {posts.length === 0 ? (
+        <Card>
+          <CardBody className="text-center py-12">
+            <p className="text-zinc-400 text-sm">No posts yet. Be the first to share something with your neighborhood!</p>
+          </CardBody>
+        </Card>
+      ) : (
+        posts.map((post) => (
+          <PostCard key={post.id} post={post} />
+        ))
+      )}
     </div>
   );
 }
 
 function PostCard({ post }: { post: Post }) {
+  const { activeNebbyCode, activeMembers } = useNebbys();
+  const currentUsername = activeMembers[0]?.username ?? `${activeNebbyCode}-NebbyMember-01`;
   const [showComments, setShowComments] = useState(false);
   const [reactions, setReactions] = useState<Reaction[]>(post.reactions);
   const [showReportDialog, setShowReportDialog] = useState(false);
@@ -276,7 +291,7 @@ function PostCard({ post }: { post: Post }) {
 
             {/* New comment input */}
             <div className="flex items-start gap-2">
-              <Avatar username={currentDemoUser.username} size="sm" />
+              <Avatar username={currentUsername} size="sm" />
               <div className="flex-1 flex gap-2">
                 <Textarea
                   placeholder="Write a comment..."

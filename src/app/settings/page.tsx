@@ -19,10 +19,11 @@ import {
   Hash,
 } from "lucide-react";
 import { useDemoAuth } from "@/lib/demo-auth";
-import { demoNebby } from "@/lib/demo-data";
+import { useNebbys } from "@/lib/nebby-context";
 
 export default function SettingsPage() {
   const { user, signOut } = useDemoAuth();
+  const { activeNebby } = useNebbys();
   const router = useRouter();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -81,8 +82,8 @@ export default function SettingsPage() {
               <SettingRow
                 icon={<Shield className="h-4 w-4" />}
                 label="Nebby"
-                value={demoNebby.name}
-                note={`Short code: ${demoNebby.shortCode}`}
+                value={activeNebby?.name ?? "—"}
+                note={`Short code: ${activeNebby?.shortCode ?? "—"}`}
               />
             </div>
           </CardBody>
@@ -129,7 +130,7 @@ export default function SettingsPage() {
           </CardHeader>
           <CardBody>
             <p className="text-sm text-zinc-600 mb-4">
-              Leaving <strong>{demoNebby.name}</strong> will immediately revoke
+              Leaving <strong>{activeNebby?.name ?? "this Nebby"}</strong> will immediately revoke
               your access. Your member number will never be reassigned. You can
               rejoin later through the normal vouching process.
             </p>
@@ -139,7 +140,7 @@ export default function SettingsPage() {
                 size="sm"
                 onClick={() => setShowLeaveConfirm(true)}
               >
-                Leave {demoNebby.name}
+                Leave {activeNebby?.name ?? "Nebby"}
               </Button>
             ) : (
               <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 space-y-3">
