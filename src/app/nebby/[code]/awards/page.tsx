@@ -19,10 +19,10 @@ import {
 } from "lucide-react";
 import {
   demoAwardSeason,
-  demoNominations,
   demoMembers,
 } from "@/lib/demo-data";
 import { useCategories } from "@/lib/categories-context";
+import { useAwards } from "@/lib/awards-context";
 import { formatDate } from "@/lib/utils";
 import type { AwardPhase, Nomination } from "@/types";
 
@@ -40,6 +40,7 @@ export default function AwardsPage() {
   const season = demoAwardSeason;
   const phase = phaseConfig[season.phase];
   const { categories } = useCategories();
+  const { nominations } = useAwards();
   const [activeView, setActiveView] = useState<"overview" | "nominate" | "vote" | "results">("overview");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -118,7 +119,7 @@ export default function AwardsPage() {
           {categories
             .filter((c) => c.enabled)
             .map((cat) => {
-              const noms = demoNominations.filter(
+              const noms = nominations.filter(
                 (n) => n.categoryId === cat.id,
               );
               return (
@@ -175,8 +176,10 @@ function NominateView({
   onSelectCategory: (id: string) => void;
 }) {
   const { categories } = useCategories();
+  const { nominations, addNomination } = useAwards();
   const [explanation, setExplanation] = useState("");
   const [selectedNominee, setSelectedNominee] = useState("");
+  const [justSubmitted, setJustSubmitted] = useState(false);
 
   const category = selectedCategory
     ? categories.find((c) => c.id === selectedCategory)
@@ -190,43 +193,75 @@ function NominateView({
         </p>
         {categories
           .filter((c) => c.enabled)
-          .map((cat) => (
-            <Card
-              key={cat.id}
-              className="cursor-pointer hover:border-emerald-300 transition-colors"
-              onClick={() => onSelectCategory(cat.id)}
-            >
-              <CardBody className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-zinc-900">{cat.name}</p>
-                  <p className="text-sm text-zinc-500">{cat.description}</p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-zinc-400" />
-              </CardBody>
-            </Card>
-          ))}
+          .map((cat) => {
+            const catNoms = nominations.filter((n) => n.categoryId === cat.id);
+            return (
+              <Card
+                key={cat.id}
+                className="cursor-pointer hover:border-emerald-300 transition-colors"
+                onClick={() => onSelectCategory(cat.id)}
+              >
+                <CardBody className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-zinc-900">{cat.name}</p>
+                    <p className="text-sm text-zinc-500">{cat.description}</p>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      {catNoms.length} nomination{catNoms.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-zinc-400" />
+                </CardBody>
+              </Card>
+            );
+          })}
       </div>
     );
   }
 
-  const noms = demoNominations.filter((n) => n.categoryId === category.id);
+  const noms = nominations.filter((n) => n.categoryId === category.id);
+
+  function handleSubmit() {
+    if (!selectedNominee) return;
+    const member = demoMembers.find((m) => m.id === selectedNominee);
+    if (!member) return;
+    addNomination(category!.id, member.id, member.username, explanation);
+    setSelectedNominee("");
+    setExplanation("");
+    setJustSubmitted(true);
+    setTimeout(() => setJustSubmitted(false), 3000);
+  }
 
   return (
     <div className="space-y-4">
-      <div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onSelectCategory("")}
+          className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+        >
+          &larr; All categories
+        </button>
+        <span className="text-sm text-zinc-300">/</span>
         <h3 className="font-semibold text-zinc-900">{category.name}</h3>
-        <p className="text-sm text-zinc-500">{category.description}</p>
       </div>
+      <p className="text-sm text-zinc-500">{category.description}</p>
 
       {/* Existing nominations */}
       {noms.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-zinc-700">
-            Current nominations
+            Current nominations ({noms.length})
           </h4>
           {noms.map((nom) => (
             <NominationCard key={nom.id} nomination={nom} />
           ))}
+        </div>
+      )}
+
+      {/* Success banner */}
+      {justSubmitted && (
+        <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          Nomination submitted!
         </div>
       )}
 
@@ -265,7 +300,7 @@ function NominateView({
             />
           </div>
           <div className="flex justify-end">
-            <Button size="sm" disabled={!selectedNominee}>
+            <Button size="sm" disabled={!selectedNominee} onClick={handleSubmit}>
               <Star className="h-3.5 w-3.5" /> Submit nomination
             </Button>
           </div>
@@ -277,86 +312,113 @@ function NominateView({
 
 function VoteView() {
   const { categories } = useCategories();
-  const [votes, setVotes] = useState<Record<string, string>>({});
+  const { nominations, votes, castVote, submitVotes, votesSubmitted } = useAwards();
+
+  const enabledCategories = categories.filter((c) => c.enabled);
+  const categoriesWithNominees = enabledCategories.filter((cat) =>
+    nominations.some(
+      (n) =>
+        n.categoryId === cat.id &&
+        n.consentStatus === "accepted" &&
+        n.moderationStatus === "approved",
+    ),
+  );
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-800">
-        You can cast one vote per category. You may change your vote until
-        voting closes.
-      </div>
+      {votesSubmitted ? (
+        <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800 flex items-center gap-2">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          <div>
+            <p className="font-semibold">Votes submitted!</p>
+            <p className="text-emerald-600 mt-0.5">
+              Your votes have been recorded. Check the Results tab to see standings.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-800">
+          You can cast one vote per category. Select a nominee in each category below, then submit.
+        </div>
+      )}
 
-      {categories
-        .filter((c) => c.enabled)
-        .map((cat) => {
-          const noms = demoNominations.filter(
-            (n) =>
-              n.categoryId === cat.id &&
-              n.consentStatus === "accepted" &&
-              n.moderationStatus === "approved",
-          );
+      {enabledCategories.map((cat) => {
+        const noms = nominations.filter(
+          (n) =>
+            n.categoryId === cat.id &&
+            n.consentStatus === "accepted" &&
+            n.moderationStatus === "approved",
+        );
 
-          return (
-            <Card key={cat.id}>
-              <CardHeader>
-                <h3 className="font-semibold text-zinc-900">{cat.name}</h3>
-                <p className="text-sm text-zinc-500">{cat.description}</p>
-              </CardHeader>
-              <CardBody className="space-y-2">
-                {noms.length === 0 ? (
-                  <p className="text-sm text-zinc-400">No eligible nominees yet.</p>
-                ) : (
-                  noms.map((nom) => (
-                    <button
-                      key={nom.id}
-                      onClick={() =>
-                        setVotes((prev) => ({ ...prev, [cat.id]: nom.id }))
-                      }
-                      className={`w-full flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                        votes[cat.id] === nom.id
-                          ? "border-emerald-500 bg-emerald-50"
-                          : "border-zinc-200 hover:border-zinc-300"
-                      }`}
-                    >
-                      <Avatar username={nom.nomineeUsername} size="sm" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-zinc-900">
-                          {nom.nomineeUsername}
+        return (
+          <Card key={cat.id}>
+            <CardHeader>
+              <h3 className="font-semibold text-zinc-900">{cat.name}</h3>
+              <p className="text-sm text-zinc-500">{cat.description}</p>
+            </CardHeader>
+            <CardBody className="space-y-2">
+              {noms.length === 0 ? (
+                <p className="text-sm text-zinc-400">No eligible nominees yet.</p>
+              ) : (
+                noms.map((nom) => (
+                  <button
+                    key={nom.id}
+                    onClick={() => !votesSubmitted && castVote(cat.id, nom.id)}
+                    disabled={votesSubmitted}
+                    className={`w-full flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                      votes[cat.id] === nom.id
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-zinc-200 hover:border-zinc-300"
+                    } ${votesSubmitted ? "cursor-default" : ""}`}
+                  >
+                    <Avatar username={nom.nomineeUsername} size="sm" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-zinc-900">
+                        {nom.nomineeUsername}
+                      </p>
+                      {nom.explanation && (
+                        <p className="text-xs text-zinc-500 mt-0.5">
+                          &ldquo;{nom.explanation}&rdquo;
                         </p>
-                        {nom.explanation && (
-                          <p className="text-xs text-zinc-500 mt-0.5">
-                            &ldquo;{nom.explanation}&rdquo;
-                          </p>
-                        )}
-                      </div>
-                      {votes[cat.id] === nom.id && (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
                       )}
-                    </button>
-                  ))
-                )}
-              </CardBody>
-            </Card>
-          );
-        })}
+                    </div>
+                    {votes[cat.id] === nom.id && (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                    )}
+                  </button>
+                ))
+              )}
+            </CardBody>
+          </Card>
+        );
+      })}
 
-      <div className="flex justify-end">
-        <Button disabled={Object.keys(votes).length === 0}>
-          <Vote className="h-4 w-4" /> Submit votes
-        </Button>
-      </div>
+      {!votesSubmitted && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-zinc-500">
+            {Object.keys(votes).length} of {categoriesWithNominees.length} categories voted
+          </p>
+          <Button
+            disabled={Object.keys(votes).length === 0}
+            onClick={submitVotes}
+          >
+            <Vote className="h-4 w-4" /> Submit votes
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
 function ResultsView() {
   const { categories } = useCategories();
+  const { nominations } = useAwards();
   return (
     <div className="space-y-4">
       {categories
         .filter((c) => c.enabled)
         .map((cat) => {
-          const noms = demoNominations
+          const noms = nominations
             .filter(
               (n) =>
                 n.categoryId === cat.id &&

@@ -3,8 +3,9 @@
 import { useState, useCallback, type ReactNode } from "react";
 import { DemoAuthContext, type DemoUser } from "@/lib/demo-auth";
 import { CategoriesContext } from "@/lib/categories-context";
-import { currentDemoUser, demoCategories } from "@/lib/demo-data";
-import type { AwardCategory } from "@/types";
+import { AwardsContext } from "@/lib/awards-context";
+import { currentDemoUser, demoCategories, demoNominations } from "@/lib/demo-data";
+import type { AwardCategory, Nomination } from "@/types";
 
 const DEMO_USERS: Record<string, DemoUser> = {
   "member@demo.com": {
@@ -22,6 +23,9 @@ const DEMO_USERS: Record<string, DemoUser> = {
 export function Providers({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DemoUser | null>(DEMO_USERS["member@demo.com"]);
   const [categories, setCategories] = useState<AwardCategory[]>(demoCategories);
+  const [nominations, setNominations] = useState<Nomination[]>(demoNominations);
+  const [votes, setVotes] = useState<Record<string, string>>({});
+  const [votesSubmitted, setVotesSubmitted] = useState(false);
 
   const signIn = useCallback((email: string) => {
     const found = DEMO_USERS[email];
@@ -76,12 +80,55 @@ export function Providers({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addNomination = useCallback(
+    (categoryId: string, nomineeMembershipId: string, nomineeUsername: string, explanation: string) => {
+      setNominations((prev) => {
+        const newNom: Nomination = {
+          id: `nom-${Date.now()}`,
+          categoryId,
+          nomineeMembershipId,
+          nomineeUsername,
+          nominatorUsername: "spf-NebbyMember-01", // current demo user
+          explanation,
+          consentStatus: "accepted",
+          moderationStatus: "approved",
+          voteCount: 0,
+          createdAt: new Date().toISOString(),
+        };
+        return [...prev, newNom];
+      });
+    },
+    [],
+  );
+
+  const castVote = useCallback((categoryId: string, nominationId: string) => {
+    setVotes((prev) => ({ ...prev, [categoryId]: nominationId }));
+  }, []);
+
+  const submitVotes = useCallback(() => {
+    // Increment vote counts on the selected nominations
+    setNominations((prev) =>
+      prev.map((n) => {
+        const votedNomId = votes[n.categoryId];
+        if (n.id === votedNomId) {
+          return { ...n, voteCount: (n.voteCount ?? 0) + 1 };
+        }
+        return n;
+      }),
+    );
+    setVotesSubmitted(true);
+  }, [votes]);
+
   return (
     <DemoAuthContext.Provider value={{ user, signIn, signOut }}>
       <CategoriesContext.Provider
         value={{ categories, addCategory, updateCategory, removeCategory, reorderCategory }}
       >
-        {children}
+        <AwardsContext.Provider
+          value={{ nominations, addNomination, votes, castVote, submitVotes, votesSubmitted }}
+        >
+          {children}
+        </AwardsContext.Provider>
       </CategoriesContext.Provider>
     </DemoAuthContext.Provider>
   );
