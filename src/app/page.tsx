@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { Shield, Users, Award, Eye, MessageCircle, Lock, Trophy } from "lucide-react";
 import { useDemoAuth } from "@/lib/demo-auth";
+import { useNebbys } from "@/lib/nebby-context";
 
 const heroSlides = [
   {
@@ -25,6 +26,7 @@ const heroSlides = [
 
 export default function LandingPage() {
   const { user } = useDemoAuth();
+  const { activeNebbyCode } = useNebbys();
 
   return (
     <div className="flex flex-col">
@@ -49,7 +51,7 @@ export default function LandingPage() {
               </p>
               <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
                 {user ? (
-                  <Link href="/nebby/spf/feed">
+                  <Link href={`/nebby/${activeNebbyCode}/feed`}>
                     <Button variant="hero" size="lg">
                       Go to your Nebby
                     </Button>

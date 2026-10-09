@@ -8,16 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Shield } from "lucide-react";
 import { useDemoAuth } from "@/lib/demo-auth";
+import { useNebbys } from "@/lib/nebby-context";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const { signIn } = useDemoAuth();
+  const { activeNebbyCode } = useNebbys();
   const router = useRouter();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     signIn(email || "member@demo.com");
-    router.push("/nebby/spf/feed");
+    router.push(`/nebby/${activeNebbyCode}/feed`);
   }
 
   return (

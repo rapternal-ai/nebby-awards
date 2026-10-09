@@ -4,8 +4,9 @@ import { useState, useCallback, type ReactNode } from "react";
 import { DemoAuthContext, type DemoUser } from "@/lib/demo-auth";
 import { CategoriesContext } from "@/lib/categories-context";
 import { AwardsContext, type AddNominationParams } from "@/lib/awards-context";
-import { currentDemoUser, demoCategories, demoNominations } from "@/lib/demo-data";
-import type { AwardCategory, Nomination } from "@/types";
+import { NebbyContext, type CreateNebbyParams } from "@/lib/nebby-context";
+import { currentDemoUser, demoCategories, demoNominations, demoNebby } from "@/lib/demo-data";
+import type { AwardCategory, Nomination, Nebby } from "@/types";
 
 const DEMO_USERS: Record<string, DemoUser> = {
   "member@demo.com": {
@@ -22,6 +23,8 @@ const DEMO_USERS: Record<string, DemoUser> = {
 
 export function Providers({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DemoUser | null>(DEMO_USERS["member@demo.com"]);
+  const [nebbys, setNebbys] = useState<Nebby[]>([demoNebby]);
+  const [activeNebbyCode, setActiveNebbyCode] = useState("spf");
   const [categories, setCategories] = useState<AwardCategory[]>(demoCategories);
   const [nominations, setNominations] = useState<Nomination[]>(demoNominations);
   const [votes, setVotes] = useState<Record<string, string>>({});
@@ -121,17 +124,37 @@ export function Providers({ children }: { children: ReactNode }) {
     setVotesSubmitted(true);
   }, [votes]);
 
+  const createNebby = useCallback((params: CreateNebbyParams) => {
+    const newNebby: Nebby = {
+      id: `nebby-${params.shortCode}`,
+      shortCode: params.shortCode,
+      name: params.name,
+      description: params.description,
+      boundary: params.boundary,
+      creatorId: user?.id ?? "user-1",
+      memberCount: 1,
+      createdAt: new Date().toISOString(),
+    };
+    setNebbys((prev) => [...prev, newNebby]);
+    setActiveNebbyCode(params.shortCode);
+    return newNebby;
+  }, [user]);
+
   return (
     <DemoAuthContext.Provider value={{ user, signIn, signOut }}>
-      <CategoriesContext.Provider
-        value={{ categories, addCategory, updateCategory, removeCategory, reorderCategory }}
+      <NebbyContext.Provider
+        value={{ nebbys, activeNebbyCode, setActiveNebbyCode, createNebby }}
       >
-        <AwardsContext.Provider
-          value={{ nominations, addNomination, votes, castVote, submitVotes, votesSubmitted }}
+        <CategoriesContext.Provider
+          value={{ categories, addCategory, updateCategory, removeCategory, reorderCategory }}
         >
-          {children}
-        </AwardsContext.Provider>
-      </CategoriesContext.Provider>
+          <AwardsContext.Provider
+            value={{ nominations, addNomination, votes, castVote, submitVotes, votesSubmitted }}
+          >
+            {children}
+          </AwardsContext.Provider>
+        </CategoriesContext.Provider>
+      </NebbyContext.Provider>
     </DemoAuthContext.Provider>
   );
 }
