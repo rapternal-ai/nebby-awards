@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import {
   UserPlus,
   Flag,
@@ -18,16 +19,27 @@ import {
   ChevronDown,
   ChevronUp,
   ScrollText,
+  Award,
+  Plus,
+  Pencil,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  ToggleLeft,
+  ToggleRight,
+  X,
+  Save,
 } from "lucide-react";
 import {
   demoJoinRequests,
   demoReports,
   demoAuditLog,
 } from "@/lib/demo-data";
+import { useCategories } from "@/lib/categories-context";
 import { timeAgo, formatDate } from "@/lib/utils";
-import type { JoinRequest, Report, AuditEntry } from "@/types";
+import type { JoinRequest, Report, AuditEntry, AwardCategory } from "@/types";
 
-type ModTab = "membership" | "reports" | "audit";
+type ModTab = "membership" | "reports" | "categories" | "audit";
 
 export default function ModeratePage() {
   const [activeTab, setActiveTab] = useState<ModTab>("membership");
@@ -75,6 +87,14 @@ export default function ModeratePage() {
           )}
         </Button>
         <Button
+          variant={activeTab === "categories" ? "primary" : "secondary"}
+          size="sm"
+          onClick={() => setActiveTab("categories")}
+        >
+          <Award className="h-3.5 w-3.5" />
+          Categories
+        </Button>
+        <Button
           variant={activeTab === "audit" ? "primary" : "secondary"}
           size="sm"
           onClick={() => setActiveTab("audit")}
@@ -86,6 +106,7 @@ export default function ModeratePage() {
 
       {activeTab === "membership" && <MembershipQueue />}
       {activeTab === "reports" && <ReportsQueue />}
+      {activeTab === "categories" && <CategoriesManager />}
       {activeTab === "audit" && <AuditLog />}
     </div>
   );
@@ -400,6 +421,235 @@ function ReportsQueue() {
             </Card>
           ))}
         </>
+      )}
+    </div>
+  );
+}
+
+// ── Categories Manager ──
+
+function CategoriesManager() {
+  const { categories, addCategory, updateCategory, removeCategory, reorderCategory } =
+    useCategories();
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+
+  const sorted = [...categories].sort((a, b) => a.displayOrder - b.displayOrder);
+
+  function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    addCategory(newName.trim(), newDesc.trim());
+    setNewName("");
+    setNewDesc("");
+    setShowAddForm(false);
+  }
+
+  function startEdit(cat: AwardCategory) {
+    setEditingId(cat.id);
+    setEditName(cat.name);
+    setEditDesc(cat.description);
+  }
+
+  function saveEdit() {
+    if (!editingId || !editName.trim()) return;
+    updateCategory(editingId, { name: editName.trim(), description: editDesc.trim() });
+    setEditingId(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-zinc-900">
+          Award categories ({categories.length})
+        </h3>
+        {!showAddForm && (
+          <Button size="sm" onClick={() => setShowAddForm(true)}>
+            <Plus className="h-3.5 w-3.5" /> Add category
+          </Button>
+        )}
+      </div>
+
+      {/* Add form */}
+      {showAddForm && (
+        <Card className="border-emerald-200">
+          <CardBody>
+            <form onSubmit={handleAdd} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                  Category name
+                </label>
+                <Input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. Best Home Garden"
+                  autoFocus
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                  Description
+                </label>
+                <Textarea
+                  value={newDesc}
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="What is this award for?"
+                  rows={2}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setNewName("");
+                    setNewDesc("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={!newName.trim()}>
+                  <Plus className="h-3.5 w-3.5" /> Add
+                </Button>
+              </div>
+            </form>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Category list */}
+      {sorted.length === 0 ? (
+        <Card>
+          <CardBody className="text-center py-8">
+            <Award className="mx-auto h-8 w-8 text-zinc-300 mb-2" />
+            <p className="text-sm text-zinc-500">No categories yet. Add one to get started.</p>
+          </CardBody>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {sorted.map((cat, idx) => (
+            <Card
+              key={cat.id}
+              className={!cat.enabled ? "opacity-60" : undefined}
+            >
+              <CardBody>
+                {editingId === cat.id ? (
+                  /* Edit mode */
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-500 mb-1">
+                        Name
+                      </label>
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-500 mb-1">
+                        Description
+                      </label>
+                      <Textarea
+                        value={editDesc}
+                        onChange={(e) => setEditDesc(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={saveEdit} disabled={!editName.trim()}>
+                        <Save className="h-3.5 w-3.5" /> Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* View mode */
+                  <div className="flex items-start gap-3">
+                    {/* Reorder controls */}
+                    <div className="flex flex-col gap-0.5 pt-0.5">
+                      <button
+                        onClick={() => reorderCategory(cat.id, "up")}
+                        disabled={idx === 0}
+                        className="text-zinc-400 hover:text-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        aria-label="Move up"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => reorderCategory(cat.id, "down")}
+                        disabled={idx === sorted.length - 1}
+                        className="text-zinc-400 hover:text-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        aria-label="Move down"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-zinc-900">
+                          {cat.name}
+                        </p>
+                        {!cat.enabled && (
+                          <Badge variant="default">Disabled</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-zinc-500 mt-0.5">
+                        {cat.description || "No description"}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() =>
+                          updateCategory(cat.id, { enabled: !cat.enabled })
+                        }
+                        className="p-1.5 rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+                        title={cat.enabled ? "Disable" : "Enable"}
+                      >
+                        {cat.enabled ? (
+                          <ToggleRight className="h-4 w-4 text-emerald-500" />
+                        ) : (
+                          <ToggleLeft className="h-4 w-4" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => startEdit(cat)}
+                        className="p-1.5 rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => removeCategory(cat.id)}
+                        className="p-1.5 rounded-md text-zinc-400 hover:bg-red-50 hover:text-red-500"
+                        title="Remove"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );

@@ -19,10 +19,10 @@ import {
 } from "lucide-react";
 import {
   demoAwardSeason,
-  demoCategories,
   demoNominations,
   demoMembers,
 } from "@/lib/demo-data";
+import { useCategories } from "@/lib/categories-context";
 import { formatDate } from "@/lib/utils";
 import type { AwardPhase, Nomination } from "@/types";
 
@@ -39,6 +39,7 @@ const phaseConfig: Record<
 export default function AwardsPage() {
   const season = demoAwardSeason;
   const phase = phaseConfig[season.phase];
+  const { categories } = useCategories();
   const [activeView, setActiveView] = useState<"overview" | "nominate" | "vote" | "results">("overview");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -114,7 +115,7 @@ export default function AwardsPage() {
       {/* Category overview */}
       {activeView === "overview" && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {demoCategories
+          {categories
             .filter((c) => c.enabled)
             .map((cat) => {
               const noms = demoNominations.filter(
@@ -173,11 +174,12 @@ function NominateView({
   selectedCategory: string | null;
   onSelectCategory: (id: string) => void;
 }) {
+  const { categories } = useCategories();
   const [explanation, setExplanation] = useState("");
   const [selectedNominee, setSelectedNominee] = useState("");
 
   const category = selectedCategory
-    ? demoCategories.find((c) => c.id === selectedCategory)
+    ? categories.find((c) => c.id === selectedCategory)
     : null;
 
   if (!category) {
@@ -186,7 +188,7 @@ function NominateView({
         <p className="text-sm text-zinc-500">
           Choose a category to nominate a neighbor:
         </p>
-        {demoCategories
+        {categories
           .filter((c) => c.enabled)
           .map((cat) => (
             <Card
@@ -274,6 +276,7 @@ function NominateView({
 }
 
 function VoteView() {
+  const { categories } = useCategories();
   const [votes, setVotes] = useState<Record<string, string>>({});
 
   return (
@@ -283,7 +286,7 @@ function VoteView() {
         voting closes.
       </div>
 
-      {demoCategories
+      {categories
         .filter((c) => c.enabled)
         .map((cat) => {
           const noms = demoNominations.filter(
@@ -347,9 +350,10 @@ function VoteView() {
 }
 
 function ResultsView() {
+  const { categories } = useCategories();
   return (
     <div className="space-y-4">
-      {demoCategories
+      {categories
         .filter((c) => c.enabled)
         .map((cat) => {
           const noms = demoNominations

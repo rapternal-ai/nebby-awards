@@ -3,7 +3,8 @@
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { demoNebby, demoMembers, demoCategories } from "@/lib/demo-data";
+import { demoNebby, demoMembers } from "@/lib/demo-data";
+import { useCategories } from "@/lib/categories-context";
 import { formatDate } from "@/lib/utils";
 import {
   MapPin,
@@ -19,6 +20,7 @@ import dynamic from "next/dynamic";
 const AboutMap = dynamic(() => import("./about-map"), { ssr: false });
 
 export default function AboutPage() {
+  const { categories } = useCategories();
   return (
     <div className="space-y-6">
       {/* Description */}
@@ -103,7 +105,7 @@ export default function AboutPage() {
         </CardHeader>
         <CardBody>
           <div className="space-y-3">
-            {demoCategories
+            {categories
               .filter((c) => c.enabled)
               .map((cat) => (
                 <div key={cat.id} className="border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
