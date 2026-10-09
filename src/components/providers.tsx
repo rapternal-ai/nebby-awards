@@ -81,7 +81,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   const addNomination = useCallback(
-    (categoryId: string, nomineeMembershipId: string, nomineeUsername: string, explanation: string) => {
+    (categoryId: string, nomineeMembershipId: string, nomineeUsername: string, explanation: string, photoUrl?: string) => {
       setNominations((prev) => {
         const newNom: Nomination = {
           id: `nom-${Date.now()}`,
@@ -90,6 +90,7 @@ export function Providers({ children }: { children: ReactNode }) {
           nomineeUsername,
           nominatorUsername: "spf-NebbyMember-01", // current demo user
           explanation,
+          photoUrl,
           consentStatus: "accepted",
           moderationStatus: "approved",
           voteCount: 0,

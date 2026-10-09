@@ -34,6 +34,7 @@ export interface Membership {
   status: MembershipStatus;
   role: UserRole;
   approvedAt: string | null;
+  approxLocation?: { lat: number; lng: number }; // block-level pin, visible to Nebby members only
 }
 
 export interface JoinRequest {
@@ -125,6 +126,7 @@ export interface Nomination {
   nomineeUsername: string;
   nominatorUsername: string;
   explanation: string;
+  photoUrl?: string; // nominee-submitted photo (e.g. lawn, garden, decor)
   consentStatus: ConsentStatus;
   moderationStatus: "approved" | "removed" | "pending";
   voteCount?: number; // only shown in results phase

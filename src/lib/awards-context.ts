@@ -5,7 +5,7 @@ import type { Nomination } from "@/types";
 
 export interface AwardsContextValue {
   nominations: Nomination[];
-  addNomination: (categoryId: string, nomineeMembershipId: string, nomineeUsername: string, explanation: string) => void;
+  addNomination: (categoryId: string, nomineeMembershipId: string, nomineeUsername: string, explanation: string, photoUrl?: string) => void;
   votes: Record<string, string>; // categoryId -> nominationId
   castVote: (categoryId: string, nominationId: string) => void;
   submitVotes: () => void;

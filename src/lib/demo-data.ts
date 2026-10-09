@@ -42,6 +42,7 @@ export const demoMembers: Membership[] = [
     status: "approved",
     role: "moderator",
     approvedAt: "2025-03-15T10:00:00Z",
+    approxLocation: { lat: 40.4409, lng: -79.9952 },
   },
   {
     id: "mem-2",
@@ -52,6 +53,7 @@ export const demoMembers: Membership[] = [
     status: "approved",
     role: "member",
     approvedAt: "2025-03-16T14:00:00Z",
+    approxLocation: { lat: 40.4413, lng: -79.9946 },
   },
   {
     id: "mem-3",
@@ -62,6 +64,7 @@ export const demoMembers: Membership[] = [
     status: "approved",
     role: "member",
     approvedAt: "2025-03-17T09:00:00Z",
+    approxLocation: { lat: 40.4407, lng: -79.9943 },
   },
   {
     id: "mem-4",
@@ -72,6 +75,7 @@ export const demoMembers: Membership[] = [
     status: "approved",
     role: "member",
     approvedAt: "2025-03-18T11:30:00Z",
+    approxLocation: { lat: 40.4415, lng: -79.9955 },
   },
   {
     id: "mem-5",
@@ -82,6 +86,7 @@ export const demoMembers: Membership[] = [
     status: "approved",
     role: "member",
     approvedAt: "2025-04-01T08:00:00Z",
+    approxLocation: { lat: 40.4411, lng: -79.9949 },
   },
 ];
 
@@ -341,6 +346,7 @@ export const demoNominations: Nomination[] = [
     nomineeUsername: "spf-NebbyMember-04",
     nominatorUsername: "spf-NebbyMember-01",
     explanation: "Their Halloween and holiday decorations are legendary. People drive from other neighborhoods to see them.",
+    photoUrl: "/nom-decor.jpg",
     consentStatus: "accepted",
     moderationStatus: "approved",
     voteCount: 8,

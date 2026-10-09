@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import Image from "next/image";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import {
   Award,
   Trophy,
+  Camera,
   Vote,
   CheckCircle2,
   Clock,
@@ -179,7 +181,16 @@ function NominateView({
   const { nominations, addNomination } = useAwards();
   const [explanation, setExplanation] = useState("");
   const [selectedNominee, setSelectedNominee] = useState("");
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [justSubmitted, setJustSubmitted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPhotoPreview(url);
+  }
 
   const category = selectedCategory
     ? categories.find((c) => c.id === selectedCategory)
@@ -224,9 +235,11 @@ function NominateView({
     if (!selectedNominee) return;
     const member = demoMembers.find((m) => m.id === selectedNominee);
     if (!member) return;
-    addNomination(category!.id, member.id, member.username, explanation);
+    addNomination(category!.id, member.id, member.username, explanation, photoPreview ?? undefined);
     setSelectedNominee("");
     setExplanation("");
+    setPhotoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setJustSubmitted(true);
     setTimeout(() => setJustSubmitted(false), 3000);
   }
@@ -299,8 +312,54 @@ function NominateView({
               placeholder="Tell us what makes this neighbor great..."
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
+              Photo{" "}
+              <span className="text-zinc-400">(required — no house numbers)</span>
+            </label>
+            <p className="text-xs text-zinc-500 mb-2">
+              The nominee should submit a photo of their lawn, garden, decor, etc. to be considered.
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoSelect}
+              className="hidden"
+              id="nom-photo"
+            />
+            {photoPreview ? (
+              <div className="relative">
+                <img
+                  src={photoPreview}
+                  alt="Nomination photo preview"
+                  className="w-full h-48 object-cover rounded-lg border border-zinc-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhotoPreview(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  className="absolute top-2 right-2 rounded-full bg-black/50 text-white p-1 hover:bg-black/70"
+                >
+                  <span className="sr-only">Remove photo</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-zinc-300 p-6 text-zinc-400 hover:border-emerald-400 hover:text-emerald-500 transition-colors"
+              >
+                <Camera className="h-8 w-8" />
+                <span className="text-sm font-medium">Upload a photo</span>
+              </button>
+            )}
+          </div>
           <div className="flex justify-end">
-            <Button size="sm" disabled={!selectedNominee} onClick={handleSubmit}>
+            <Button size="sm" disabled={!selectedNominee || !photoPreview} onClick={handleSubmit}>
               <Star className="h-3.5 w-3.5" /> Submit nomination
             </Button>
           </div>
@@ -365,26 +424,35 @@ function VoteView() {
                     key={nom.id}
                     onClick={() => !votesSubmitted && castVote(cat.id, nom.id)}
                     disabled={votesSubmitted}
-                    className={`w-full flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                    className={`w-full rounded-lg border overflow-hidden text-left transition-colors ${
                       votes[cat.id] === nom.id
                         ? "border-emerald-500 bg-emerald-50"
                         : "border-zinc-200 hover:border-zinc-300"
                     } ${votesSubmitted ? "cursor-default" : ""}`}
                   >
-                    <Avatar username={nom.nomineeUsername} size="sm" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-zinc-900">
-                        {nom.nomineeUsername}
-                      </p>
-                      {nom.explanation && (
-                        <p className="text-xs text-zinc-500 mt-0.5">
-                          &ldquo;{nom.explanation}&rdquo;
+                    {nom.photoUrl && (
+                      <img
+                        src={nom.photoUrl}
+                        alt={`Photo for ${nom.nomineeUsername}`}
+                        className="w-full h-32 object-cover"
+                      />
+                    )}
+                    <div className="flex items-center gap-3 p-3">
+                      <Avatar username={nom.nomineeUsername} size="sm" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-zinc-900">
+                          {nom.nomineeUsername}
                         </p>
+                        {nom.explanation && (
+                          <p className="text-xs text-zinc-500 mt-0.5">
+                            &ldquo;{nom.explanation}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                      {votes[cat.id] === nom.id && (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
                       )}
                     </div>
-                    {votes[cat.id] === nom.id && (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                    )}
                   </button>
                 ))
               )}
@@ -447,27 +515,36 @@ function ResultsView() {
                       return (
                         <div
                           key={nom.id}
-                          className={`flex items-center gap-3 rounded-lg p-3 ${
+                          className={`rounded-lg overflow-hidden ${
                             isWinner
                               ? "bg-amber-50 border border-amber-200"
                               : "bg-zinc-50"
                           }`}
                         >
-                          {isWinner && (
-                            <Trophy className="h-5 w-5 text-amber-500 shrink-0" />
+                          {nom.photoUrl && isWinner && (
+                            <img
+                              src={nom.photoUrl}
+                              alt={`Winning photo for ${nom.nomineeUsername}`}
+                              className="w-full h-40 object-cover"
+                            />
                           )}
-                          <Avatar username={nom.nomineeUsername} size="sm" />
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-zinc-900">
-                              {nom.nomineeUsername}
-                            </p>
-                            {isWinner && isTie && (
-                              <Badge variant="warning" className="mt-0.5">Tied winner</Badge>
+                          <div className="flex items-center gap-3 p-3">
+                            {isWinner && (
+                              <Trophy className="h-5 w-5 text-amber-500 shrink-0" />
                             )}
+                            <Avatar username={nom.nomineeUsername} size="sm" />
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-zinc-900">
+                                {nom.nomineeUsername}
+                              </p>
+                              {isWinner && isTie && (
+                                <Badge variant="warning" className="mt-0.5">Tied winner</Badge>
+                              )}
+                            </div>
+                            <span className="text-sm font-medium text-zinc-600">
+                              {nom.voteCount} vote{nom.voteCount !== 1 ? "s" : ""}
+                            </span>
                           </div>
-                          <span className="text-sm font-medium text-zinc-600">
-                            {nom.voteCount} vote{nom.voteCount !== 1 ? "s" : ""}
-                          </span>
                         </div>
                       );
                     })}
@@ -483,28 +560,37 @@ function ResultsView() {
 
 function NominationCard({ nomination }: { nomination: Nomination }) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-zinc-200 p-3">
-      <Avatar username={nomination.nomineeUsername} size="sm" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-zinc-900">
-            {nomination.nomineeUsername}
-          </span>
-          {nomination.consentStatus === "pending" && (
-            <Badge variant="warning">Consent pending</Badge>
+    <div className="rounded-lg border border-zinc-200 overflow-hidden">
+      {nomination.photoUrl && (
+        <img
+          src={nomination.photoUrl}
+          alt={`Nomination photo for ${nomination.nomineeUsername}`}
+          className="w-full h-40 object-cover"
+        />
+      )}
+      <div className="flex items-start gap-3 p-3">
+        <Avatar username={nomination.nomineeUsername} size="sm" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-zinc-900">
+              {nomination.nomineeUsername}
+            </span>
+            {nomination.consentStatus === "pending" && (
+              <Badge variant="warning">Consent pending</Badge>
+            )}
+            {nomination.consentStatus === "accepted" && (
+              <Badge variant="success">Accepted</Badge>
+            )}
+          </div>
+          {nomination.explanation && (
+            <p className="text-sm text-zinc-500 mt-0.5">
+              &ldquo;{nomination.explanation}&rdquo;
+            </p>
           )}
-          {nomination.consentStatus === "accepted" && (
-            <Badge variant="success">Accepted</Badge>
-          )}
-        </div>
-        {nomination.explanation && (
-          <p className="text-sm text-zinc-500 mt-0.5">
-            &ldquo;{nomination.explanation}&rdquo;
+          <p className="text-xs text-zinc-400 mt-1">
+            Nominated by {nomination.nominatorUsername}
           </p>
-        )}
-        <p className="text-xs text-zinc-400 mt-1">
-          Nominated by {nomination.nominatorUsername}
-        </p>
+        </div>
       </div>
     </div>
   );
