@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useNebbys } from "@/lib/nebby-context";
@@ -9,18 +9,31 @@ export default function AboutMap() {
   const { activeNebby, activeMembers } = useNebbys();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const boundary = activeNebby?.boundary ?? [];
-  const nebbyName = activeNebby?.name ?? "Neighborhood";
+
+  // Wait one tick so the container is fully in the DOM
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mounted || !mapRef.current) return;
 
-    // Clean up previous instance
+    // Clean up previous instance safely
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.remove();
+      try {
+        mapInstanceRef.current.remove();
+      } catch {
+        // Leaflet can throw if container already detached
+      }
       mapInstanceRef.current = null;
     }
+
+    const container = mapRef.current;
+    if (container.clientWidth === 0 || container.clientHeight === 0) return;
 
     const center: L.LatLngExpression = boundary.length > 0
       ? [
@@ -29,7 +42,7 @@ export default function AboutMap() {
         ]
       : [40.4406, -79.9959];
 
-    const map = L.map(mapRef.current, {
+    const map = L.map(container, {
       zoomControl: true,
       scrollWheelZoom: false,
     }).setView(center, 15);
@@ -54,7 +67,7 @@ export default function AboutMap() {
       map.fitBounds(polygon.getBounds().pad(0.1));
     }
 
-    // Add approximate member pins (block-level, not exact address)
+    // Add approximate member pins
     const membersWithLocation = activeMembers.filter(
       (m) => m.status === "approved" && m.approxLocation,
     );
@@ -80,11 +93,15 @@ export default function AboutMap() {
     });
 
     return () => {
-      map.remove();
+      try {
+        map.remove();
+      } catch {
+        // Leaflet can throw if container already detached
+      }
       mapInstanceRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeNebby?.shortCode]);
+  }, [mounted, activeNebby?.shortCode]);
 
   return <div ref={mapRef} className="h-full w-full" />;
 }

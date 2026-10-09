@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw";
@@ -13,11 +13,25 @@ interface BoundaryMapProps {
 export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Wait one tick so the container is fully in the DOM
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return;
+    if (!mounted || !mapRef.current) return;
 
-    const map = L.map(mapRef.current).setView([40.4406, -79.9959], 15);
+    // Prevent double-init (React strict mode)
+    if (mapInstanceRef.current) return;
+
+    // Guard: container must have dimensions
+    const container = mapRef.current;
+    if (container.clientWidth === 0 || container.clientHeight === 0) return;
+
+    const map = L.map(container).setView([40.4406, -79.9959], 15);
     mapInstanceRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -71,7 +85,6 @@ export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     map.on(L.Draw.Event.CREATED, (e: any) => {
-      // Clear previous drawings — only one boundary allowed
       drawnItems.clearLayers();
       drawnItems.addLayer(e.layer);
       const coords = extractCoords(e.layer);
@@ -91,11 +104,15 @@ export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
     });
 
     return () => {
-      map.remove();
+      try {
+        map.remove();
+      } catch {
+        // Leaflet can throw if container already detached
+      }
       mapInstanceRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mounted]);
 
   return <div ref={mapRef} className="h-full w-full" />;
 }
