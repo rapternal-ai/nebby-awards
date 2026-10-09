@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,6 +13,8 @@ import {
   Award,
   Trophy,
   Camera,
+  UserPlus,
+  Users as UsersIcon,
   Vote,
   CheckCircle2,
   Clock,
@@ -181,6 +184,8 @@ function NominateView({
   const { nominations, addNomination } = useAwards();
   const [explanation, setExplanation] = useState("");
   const [selectedNominee, setSelectedNominee] = useState("");
+  const [nomineeType, setNomineeType] = useState<"member" | "non-member">("member");
+  const [nonMemberName, setNonMemberName] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [justSubmitted, setJustSubmitted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -231,12 +236,35 @@ function NominateView({
 
   const noms = nominations.filter((n) => n.categoryId === category.id);
 
+  const canSubmit =
+    nomineeType === "member"
+      ? !!selectedNominee && !!photoPreview
+      : !!nonMemberName.trim() && !!photoPreview;
+
   function handleSubmit() {
-    if (!selectedNominee) return;
-    const member = demoMembers.find((m) => m.id === selectedNominee);
-    if (!member) return;
-    addNomination(category!.id, member.id, member.username, explanation, photoPreview ?? undefined);
+    if (!canSubmit) return;
+    if (nomineeType === "member") {
+      const member = demoMembers.find((m) => m.id === selectedNominee);
+      if (!member) return;
+      addNomination({
+        categoryId: category!.id,
+        nomineeMembershipId: member.id,
+        nomineeUsername: member.username,
+        explanation,
+        photoUrl: photoPreview ?? undefined,
+      });
+    } else {
+      addNomination({
+        categoryId: category!.id,
+        nomineeMembershipId: null,
+        nomineeUsername: nonMemberName.trim(),
+        nomineeIsNonMember: true,
+        explanation,
+        photoUrl: photoPreview ?? undefined,
+      });
+    }
     setSelectedNominee("");
+    setNonMemberName("");
     setExplanation("");
     setPhotoPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -284,23 +312,80 @@ function NominateView({
           <h4 className="font-medium text-zinc-900">Submit a nomination</h4>
         </CardHeader>
         <CardBody className="space-y-3">
+          {/* Member / Non-member toggle */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">
-              Nominee
+            <label className="block text-sm font-medium text-zinc-700 mb-2">
+              Who are you nominating?
             </label>
-            <select
-              value={selectedNominee}
-              onChange={(e) => setSelectedNominee(e.target.value)}
-              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            >
-              <option value="">Select a neighbor...</option>
-              {demoMembers.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.username}
-                </option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setNomineeType("member");
+                  setNonMemberName("");
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg border p-2.5 text-sm font-medium transition-colors ${
+                  nomineeType === "member"
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                    : "border-zinc-200 text-zinc-600 hover:border-zinc-300"
+                }`}
+              >
+                <UsersIcon className="h-4 w-4" />
+                A Nebby member
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNomineeType("non-member");
+                  setSelectedNominee("");
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg border p-2.5 text-sm font-medium transition-colors ${
+                  nomineeType === "non-member"
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                    : "border-zinc-200 text-zinc-600 hover:border-zinc-300"
+                }`}
+              >
+                <UserPlus className="h-4 w-4" />
+                A neighbor (not on Nebby)
+              </button>
+            </div>
           </div>
+
+          {/* Nominee selection */}
+          {nomineeType === "member" ? (
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                Nominee
+              </label>
+              <select
+                value={selectedNominee}
+                onChange={(e) => setSelectedNominee(e.target.value)}
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="">Select a neighbor...</option>
+                {demoMembers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                How is this person known in the neighborhood?
+              </label>
+              <Input
+                value={nonMemberName}
+                onChange={(e) => setNonMemberName(e.target.value)}
+                placeholder='e.g. "The lady on Elm St who always waves"'
+              />
+              <p className="text-xs text-zinc-400 mt-1">
+                Use a friendly description — no real names or addresses needed.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-zinc-700 mb-1">
               Why do they deserve this award?{" "}
@@ -318,7 +403,7 @@ function NominateView({
               <span className="text-zinc-400">(required — no house numbers)</span>
             </label>
             <p className="text-xs text-zinc-500 mb-2">
-              The nominee should submit a photo of their lawn, garden, decor, etc. to be considered.
+              Upload a photo of their lawn, garden, decor, etc. to be considered.
             </p>
             <input
               ref={fileInputRef}
@@ -359,7 +444,7 @@ function NominateView({
             )}
           </div>
           <div className="flex justify-end">
-            <Button size="sm" disabled={!selectedNominee || !photoPreview} onClick={handleSubmit}>
+            <Button size="sm" disabled={!canSubmit} onClick={handleSubmit}>
               <Star className="h-3.5 w-3.5" /> Submit nomination
             </Button>
           </div>
@@ -440,9 +525,14 @@ function VoteView() {
                     <div className="flex items-center gap-3 p-3">
                       <Avatar username={nom.nomineeUsername} size="sm" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-zinc-900">
-                          {nom.nomineeUsername}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-zinc-900">
+                            {nom.nomineeUsername}
+                          </p>
+                          {nom.nomineeIsNonMember && (
+                            <Badge variant="default">Neighbor</Badge>
+                          )}
+                        </div>
                         {nom.explanation && (
                           <p className="text-xs text-zinc-500 mt-0.5">
                             &ldquo;{nom.explanation}&rdquo;
@@ -534,9 +624,14 @@ function ResultsView() {
                             )}
                             <Avatar username={nom.nomineeUsername} size="sm" />
                             <div className="flex-1">
-                              <p className="text-sm font-semibold text-zinc-900">
-                                {nom.nomineeUsername}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-zinc-900">
+                                  {nom.nomineeUsername}
+                                </p>
+                                {nom.nomineeIsNonMember && (
+                                  <Badge variant="default">Neighbor</Badge>
+                                )}
+                              </div>
                               {isWinner && isTie && (
                                 <Badge variant="warning" className="mt-0.5">Tied winner</Badge>
                               )}
@@ -571,14 +666,17 @@ function NominationCard({ nomination }: { nomination: Nomination }) {
       <div className="flex items-start gap-3 p-3">
         <Avatar username={nomination.nomineeUsername} size="sm" />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-zinc-900">
               {nomination.nomineeUsername}
             </span>
-            {nomination.consentStatus === "pending" && (
+            {nomination.nomineeIsNonMember && (
+              <Badge variant="default">Neighbor</Badge>
+            )}
+            {nomination.consentStatus === "pending" && !nomination.nomineeIsNonMember && (
               <Badge variant="warning">Consent pending</Badge>
             )}
-            {nomination.consentStatus === "accepted" && (
+            {nomination.consentStatus === "accepted" && !nomination.nomineeIsNonMember && (
               <Badge variant="success">Accepted</Badge>
             )}
           </div>

@@ -122,8 +122,9 @@ export interface AwardCategory {
 export interface Nomination {
   id: string;
   categoryId: string;
-  nomineeMembershipId: string;
-  nomineeUsername: string;
+  nomineeMembershipId: string | null; // null for non-member neighbors
+  nomineeUsername: string; // pseudonym for members, friendly label for non-members
+  nomineeIsNonMember?: boolean; // true when nominee is not a Nebby member
   nominatorUsername: string;
   explanation: string;
   photoUrl?: string; // nominee-submitted photo (e.g. lawn, garden, decor)

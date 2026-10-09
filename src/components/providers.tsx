@@ -3,7 +3,7 @@
 import { useState, useCallback, type ReactNode } from "react";
 import { DemoAuthContext, type DemoUser } from "@/lib/demo-auth";
 import { CategoriesContext } from "@/lib/categories-context";
-import { AwardsContext } from "@/lib/awards-context";
+import { AwardsContext, type AddNominationParams } from "@/lib/awards-context";
 import { currentDemoUser, demoCategories, demoNominations } from "@/lib/demo-data";
 import type { AwardCategory, Nomination } from "@/types";
 
@@ -81,17 +81,18 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   const addNomination = useCallback(
-    (categoryId: string, nomineeMembershipId: string, nomineeUsername: string, explanation: string, photoUrl?: string) => {
+    (params: AddNominationParams) => {
       setNominations((prev) => {
         const newNom: Nomination = {
           id: `nom-${Date.now()}`,
-          categoryId,
-          nomineeMembershipId,
-          nomineeUsername,
+          categoryId: params.categoryId,
+          nomineeMembershipId: params.nomineeMembershipId,
+          nomineeUsername: params.nomineeUsername,
+          nomineeIsNonMember: params.nomineeIsNonMember ?? false,
           nominatorUsername: "spf-NebbyMember-01", // current demo user
-          explanation,
-          photoUrl,
-          consentStatus: "accepted",
+          explanation: params.explanation,
+          photoUrl: params.photoUrl,
+          consentStatus: params.nomineeIsNonMember ? "accepted" : "accepted",
           moderationStatus: "approved",
           voteCount: 0,
           createdAt: new Date().toISOString(),
