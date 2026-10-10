@@ -10,6 +10,7 @@ import type {
   AwardCategory,
   Nomination,
   Comment,
+  JoinRequest,
 } from "@/types";
 
 export async function getNebbys(): Promise<Nebby[]> {
@@ -336,4 +337,78 @@ export async function incrementNominationVoteCount(
     .update(schema.nominations)
     .set({ voteCount: sql`${schema.nominations.voteCount} + 1` })
     .where(eq(schema.nominations.id, nominationId));
+}
+
+export async function getJoinRequestsForNebby(
+  nebbyId: string,
+): Promise<JoinRequest[]> {
+  const rows = await db
+    .select()
+    .from(schema.joinRequests)
+    .where(eq(schema.joinRequests.nebbyId, nebbyId))
+    .orderBy(schema.joinRequests.createdAt);
+  return rows.map((r) => ({
+    id: r.id,
+    nebbyId: r.nebbyId,
+    applicantId: r.applicantId,
+    applicantEmail: r.applicantEmail,
+    status: r.status as JoinRequest["status"],
+    vouchCount: r.vouchCount,
+    createdAt: r.createdAt.toISOString(),
+    reviewedAt: r.reviewedAt?.toISOString() ?? null,
+  }));
+}
+
+export async function createJoinRequestInDb(params: {
+  nebbyId: string;
+  applicantId: string;
+  applicantEmail: string;
+}): Promise<JoinRequest> {
+  const id = generateId("jr");
+  const [row] = await db
+    .insert(schema.joinRequests)
+    .values({
+      id,
+      nebbyId: params.nebbyId,
+      applicantId: params.applicantId,
+      applicantEmail: params.applicantEmail,
+      status: "pending",
+      vouchCount: 0,
+      createdAt: new Date(),
+    })
+    .returning();
+  return {
+    id: row.id,
+    nebbyId: row.nebbyId,
+    applicantId: row.applicantId,
+    applicantEmail: row.applicantEmail,
+    status: row.status as JoinRequest["status"],
+    vouchCount: row.vouchCount,
+    createdAt: row.createdAt.toISOString(),
+    reviewedAt: row.reviewedAt?.toISOString() ?? null,
+  };
+}
+
+export async function updateJoinRequestInDb(
+  id: string,
+  updates: Partial<Pick<JoinRequest, "status" | "vouchCount">>,
+): Promise<JoinRequest> {
+  const [row] = await db
+    .update(schema.joinRequests)
+    .set({
+      ...updates,
+      reviewedAt: updates.status ? new Date() : undefined,
+    })
+    .where(eq(schema.joinRequests.id, id))
+    .returning();
+  return {
+    id: row.id,
+    nebbyId: row.nebbyId,
+    applicantId: row.applicantId,
+    applicantEmail: row.applicantEmail,
+    status: row.status as JoinRequest["status"],
+    vouchCount: row.vouchCount,
+    createdAt: row.createdAt.toISOString(),
+    reviewedAt: row.reviewedAt?.toISOString() ?? null,
+  };
 }

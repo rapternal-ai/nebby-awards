@@ -83,6 +83,7 @@ DATABASE_URL=postgres://nebby:nebby@localhost:5433/nebby
 - Creating a post, category, nomination, or vote now persists to Postgres.
 - Category edits, enable/disable, reorder, and deletion persist to Postgres.
 - Votes are recorded in the database when submitted and increment the nomination vote counts.
+- Join requests are persisted to Postgres; the moderator dashboard loads them from the database and approve/reject actions update the database.
 
 ### Notes
 - If port 5432 is already in use, the Docker Compose maps Postgres to host port 5433.

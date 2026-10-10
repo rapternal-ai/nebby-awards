@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,11 +31,15 @@ import {
   Save,
 } from "lucide-react";
 import {
-  demoJoinRequests,
   demoReports,
   demoAuditLog,
 } from "@/lib/demo-data";
 import { useCategories } from "@/lib/categories-context";
+import { useNebbys } from "@/lib/nebby-context";
+import {
+  getJoinRequestsForNebby,
+  updateJoinRequestInDb,
+} from "@/lib/db/actions";
 import { timeAgo, formatDate } from "@/lib/utils";
 import type { JoinRequest, Report, AuditEntry, AwardCategory } from "@/types";
 
@@ -43,8 +47,24 @@ type ModTab = "membership" | "reports" | "categories" | "audit";
 
 export default function ModeratePage() {
   const [activeTab, setActiveTab] = useState<ModTab>("membership");
+  const { activeNebby } = useNebbys();
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [joinRequestsLoaded, setJoinRequestsLoaded] = useState(false);
 
-  const pendingJoins = demoJoinRequests.filter((r) => r.status === "pending");
+  useEffect(() => {
+    if (!activeNebby) return;
+    let cancelled = false;
+    getJoinRequestsForNebby(activeNebby.id).then((requests) => {
+      if (cancelled) return;
+      setJoinRequests(requests);
+      setJoinRequestsLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeNebby?.id]);
+
+  const pendingJoins = joinRequests.filter((r) => r.status === "pending");
   const openReports = demoReports.filter((r) => r.status === "open");
 
   return (
@@ -104,7 +124,13 @@ export default function ModeratePage() {
         </Button>
       </div>
 
-      {activeTab === "membership" && <MembershipQueue />}
+      {activeTab === "membership" && (
+        <MembershipQueue
+          requests={joinRequests}
+          loaded={joinRequestsLoaded}
+          onChange={setJoinRequests}
+        />
+      )}
       {activeTab === "reports" && <ReportsQueue />}
       {activeTab === "categories" && <CategoriesManager />}
       {activeTab === "audit" && <AuditLog />}
@@ -114,27 +140,23 @@ export default function ModeratePage() {
 
 // ── Membership Queue ──
 
-function MembershipQueue() {
-  const [requests, setRequests] = useState<JoinRequest[]>(demoJoinRequests);
-
-  function handleApprove(id: string) {
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? { ...r, status: "approved" as const, reviewedAt: new Date().toISOString() }
-          : r,
-      ),
-    );
+function MembershipQueue({
+  requests,
+  loaded,
+  onChange,
+}: {
+  requests: JoinRequest[];
+  loaded: boolean;
+  onChange: (requests: JoinRequest[]) => void;
+}) {
+  async function handleApprove(id: string) {
+    const updated = await updateJoinRequestInDb(id, { status: "approved" });
+    onChange(requests.map((r) => (r.id === id ? updated : r)));
   }
 
-  function handleReject(id: string) {
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? { ...r, status: "rejected" as const, reviewedAt: new Date().toISOString() }
-          : r,
-      ),
-    );
+  async function handleReject(id: string) {
+    const updated = await updateJoinRequestInDb(id, { status: "rejected" });
+    onChange(requests.map((r) => (r.id === id ? updated : r)));
   }
 
   const pending = requests.filter((r) => r.status === "pending");
@@ -146,7 +168,13 @@ function MembershipQueue() {
         Pending join requests ({pending.length})
       </h3>
 
-      {pending.length === 0 ? (
+      {!loaded ? (
+        <Card>
+          <CardBody className="text-center py-8">
+            <p className="text-sm text-zinc-500">Loading requests...</p>
+          </CardBody>
+        </Card>
+      ) : pending.length === 0 ? (
         <Card>
           <CardBody className="text-center py-8">
             <CheckCircle2 className="mx-auto h-8 w-8 text-zinc-300 mb-2" />
@@ -158,8 +186,8 @@ function MembershipQueue() {
           <JoinRequestCard
             key={req.id}
             request={req}
-            onApprove={() => handleApprove(req.id)}
-            onReject={() => handleReject(req.id)}
+            onApprove={() => handleApprove(req.id).catch(() => {})}
+            onReject={() => handleReject(req.id).catch(() => {})}
           />
         ))
       )}

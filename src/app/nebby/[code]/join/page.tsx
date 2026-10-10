@@ -15,6 +15,11 @@ import {
   Send,
 } from "lucide-react";
 import { useNebbys } from "@/lib/nebby-context";
+import {
+  createJoinRequestInDb,
+  updateJoinRequestInDb,
+} from "@/lib/db/actions";
+import { useDemoAuth } from "@/lib/demo-auth";
 
 type JoinState = "not-requested" | "pending" | "approved";
 
@@ -22,13 +27,39 @@ export default function JoinPage() {
   const params = useParams();
   const code = params.code as string;
   const { activeNebby } = useNebbys();
+  const { user } = useDemoAuth();
   const [state, setState] = useState<JoinState>("not-requested");
   const [vouchCount, setVouchCount] = useState(0);
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleRequestJoin() {
+  async function handleRequestJoin() {
+    if (!activeNebby) return;
+    setSubmitting(true);
+    const applicantId = user?.id ?? `visitor-${Date.now()}`;
+    const request = await createJoinRequestInDb({
+      nebbyId: activeNebby.id,
+      applicantId,
+      applicantEmail: user?.email ?? "visitor@demo.com",
+    });
+    setRequestId(request.id);
     setState("pending");
-    // Simulate getting vouches
-    setTimeout(() => setVouchCount(1), 1500);
+    setSubmitting(false);
+    // Simulate getting one vouch after a delay
+    setTimeout(async () => {
+      const updated = await updateJoinRequestInDb(request.id, { vouchCount: 1 });
+      setVouchCount(updated.vouchCount);
+    }, 1500);
+  }
+
+  async function handleSimulateApproval() {
+    if (!requestId) return;
+    const updated = await updateJoinRequestInDb(requestId, {
+      status: "approved",
+      vouchCount: 2,
+    });
+    setVouchCount(updated.vouchCount);
+    setTimeout(() => setState("approved"), 800);
   }
 
   return (
@@ -81,8 +112,8 @@ export default function JoinPage() {
               </div>
             </div>
 
-            <Button onClick={handleRequestJoin} className="w-full">
-              Request to join
+            <Button onClick={handleRequestJoin} className="w-full" disabled={submitting}>
+              {submitting ? "Submitting..." : "Request to join"}
             </Button>
 
             <p className="text-xs text-zinc-400">
@@ -169,10 +200,7 @@ export default function JoinPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setVouchCount(2);
-                setTimeout(() => setState("approved"), 800);
-              }}
+              onClick={handleSimulateApproval}
             >
               (Demo: simulate 2nd vouch & approval)
             </Button>
