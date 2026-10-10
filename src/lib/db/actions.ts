@@ -339,6 +339,19 @@ export async function incrementNominationVoteCount(
     .where(eq(schema.nominations.id, nominationId));
 }
 
+export async function updatePostReactionsInDb(
+  postId: string,
+  reactions: { type: string; count: number; reacted: boolean }[],
+): Promise<void> {
+  await db
+    .update(schema.posts)
+    .set({
+      reactions: reactions as { type: string; count: number; reacted: boolean }[],
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.posts.id, postId));
+}
+
 export async function getJoinRequestsForNebby(
   nebbyId: string,
 ): Promise<JoinRequest[]> {

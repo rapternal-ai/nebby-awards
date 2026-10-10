@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { demoComments } from "@/lib/demo-data";
 import { useNebbys } from "@/lib/nebby-context";
+import { updatePostReactionsInDb } from "@/lib/db/actions";
 import { timeAgo } from "@/lib/utils";
 import type { Post, Comment as CommentType, Reaction } from "@/types";
 
@@ -141,11 +142,11 @@ function PostCard({ post }: { post: Post }) {
   const [newComment, setNewComment] = useState("");
   const comments: CommentType[] = demoComments[post.id] ?? [];
 
-  function toggleReaction(type: string) {
-    setReactions((prev) => {
-      const existing = prev.find((r) => r.type === type);
+  async function toggleReaction(type: string) {
+    const updated = (() => {
+      const existing = reactions.find((r) => r.type === type);
       if (existing) {
-        return prev.map((r) =>
+        return reactions.map((r) =>
           r.type === type
             ? {
                 ...r,
@@ -155,8 +156,10 @@ function PostCard({ post }: { post: Post }) {
             : r,
         );
       }
-      return [...prev, { type: type as Reaction["type"], count: 1, reacted: true }];
-    });
+      return [...reactions, { type: type as Reaction["type"], count: 1, reacted: true }];
+    })();
+    setReactions(updated);
+    await updatePostReactionsInDb(post.id, updated);
   }
 
   return (
