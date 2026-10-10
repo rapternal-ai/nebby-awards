@@ -17,7 +17,7 @@ export interface NebbyContextValue {
   activeMembers: Membership[];
   activePosts: Post[];
   setActiveNebbyCode: (code: string) => void;
-  createNebby: (params: CreateNebbyParams) => Nebby;
+  createNebby: (params: CreateNebbyParams) => Promise<Nebby>;
 }
 
 export const NebbyContext = createContext<NebbyContextValue>({
@@ -27,7 +27,7 @@ export const NebbyContext = createContext<NebbyContextValue>({
   activeMembers: [],
   activePosts: [],
   setActiveNebbyCode: () => {},
-  createNebby: () => ({} as Nebby),
+  createNebby: () => Promise.resolve({} as Nebby),
 });
 
 export function useNebbys() {

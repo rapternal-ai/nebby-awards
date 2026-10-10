@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nebby-postgres
+    environment:
+      POSTGRES_USER: nebby
+      POSTGRES_PASSWORD: nebby
+      POSTGRES_DB: nebby
+    ports:
+      - "5433:5432"
+    volumes:
+      - nebby-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nebby -d nebby"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  nebby-postgres-data:

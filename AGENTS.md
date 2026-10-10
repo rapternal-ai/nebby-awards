@@ -42,3 +42,46 @@ Currently using client-side demo auth (`src/lib/demo-auth.ts`). Sign in with:
 
 ### Phase 1 Status
 UI shell complete with demo data. No backend (Supabase) integration yet.
+
+### Local Database (Postgres via Docker)
+A local Postgres database is available via Docker Compose.
+
+**Start the database:**
+```bash
+npm run db:up
+```
+
+**Run migrations:**
+```bash
+npm run db:migrate
+```
+
+**Seed demo data:**
+```bash
+npm run db:seed
+```
+
+**Generate migrations after schema changes:**
+```bash
+npm run db:generate
+```
+
+**Open Drizzle Studio:**
+```bash
+npm run db:studio
+```
+
+Connection string is in `.env.local`:
+```
+DATABASE_URL=postgres://nebby:nebby@localhost:5433/nebby
+```
+
+### Database-backed features
+- Nebbys are now persisted to Postgres and loaded on app start.
+- Creating a Nebby writes to the database and creates the founding moderator membership.
+- Members, posts, award categories, and nominations are hydrated from the database when a Nebby becomes active.
+- Votes remain in-memory for the current session only.
+
+### Notes
+- If port 5432 is already in use, the Docker Compose maps Postgres to host port 5433.
+- To reset the database: `docker-compose down -v`, then rerun `db:migrate` and `db:seed`.

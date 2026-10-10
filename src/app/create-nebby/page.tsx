@@ -22,6 +22,7 @@ export default function CreateNebbyPage() {
   const [boundary, setBoundary] = useState<[number, number][]>([]);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
 
   // Auto-generate short code from name
   function handleNameChange(value: string) {
@@ -36,7 +37,7 @@ export default function CreateNebbyPage() {
 
   const codeExists = nebbys.some((n) => n.shortCode === shortCode);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) {
       setError("Neighborhood name is required.");
@@ -55,14 +56,19 @@ export default function CreateNebbyPage() {
       return;
     }
 
-    const nebby = createNebby({
-      name: name.trim(),
-      shortCode: shortCode.trim(),
-      description: description.trim(),
-      boundary,
-    });
-
-    router.push(`/nebby/${nebby.shortCode}/feed`);
+    setCreating(true);
+    try {
+      const nebby = await createNebby({
+        name: name.trim(),
+        shortCode: shortCode.trim(),
+        description: description.trim(),
+        boundary,
+      });
+      router.push(`/nebby/${nebby.shortCode}/feed`);
+    } catch {
+      setError("Failed to create Nebby. Please try again.");
+      setCreating(false);
+    }
   }
 
   function copyInviteLink() {
@@ -194,7 +200,9 @@ export default function CreateNebbyPage() {
           <Button type="button" variant="secondary" onClick={() => router.back()}>
             Cancel
           </Button>
-          <Button type="submit">Create Nebby</Button>
+          <Button type="submit" disabled={creating}>
+            {creating ? "Creating..." : "Create Nebby"}
+          </Button>
         </div>
       </form>
     </div>
