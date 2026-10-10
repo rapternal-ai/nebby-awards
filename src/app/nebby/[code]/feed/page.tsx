@@ -31,33 +31,25 @@ const REACTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function FeedPage() {
-  const { activeNebbyCode, activeNebby, activeMembers, activePosts } = useNebbys();
+  const { activeNebbyCode, activeMembers, activePosts, createPost } = useNebbys();
   const [newPost, setNewPost] = useState("");
-  const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const [showComposer, setShowComposer] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const currentUsername = activeMembers[0]?.username ?? `${activeNebbyCode}-NebbyMember-01`;
-  const posts = [...localPosts, ...activePosts];
+  const posts = activePosts;
 
-  function handleCreatePost(e: React.FormEvent) {
+  async function handleCreatePost(e: React.FormEvent) {
     e.preventDefault();
     if (!newPost.trim()) return;
-
-    const post: Post = {
-      id: `post-new-${Date.now()}`,
-      nebbyId: activeNebby?.id ?? `nebby-${activeNebbyCode}`,
-      authorUsername: currentUsername,
-      body: newPost.trim(),
-      status: "visible",
-      reactions: [],
-      commentCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setLocalPosts([post, ...localPosts]);
-    setNewPost("");
-    setShowComposer(false);
+    setSubmitting(true);
+    try {
+      await createPost(newPost.trim());
+      setNewPost("");
+      setShowComposer(false);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -112,8 +104,8 @@ export default function FeedPage() {
                       >
                         Cancel
                       </Button>
-                      <Button type="submit" size="sm" disabled={!newPost.trim()}>
-                        <Send className="h-3.5 w-3.5" /> Post
+                      <Button type="submit" size="sm" disabled={!newPost.trim() || submitting}>
+                        <Send className="h-3.5 w-3.5" /> {submitting ? "Posting..." : "Post"}
                       </Button>
                     </div>
                   </div>

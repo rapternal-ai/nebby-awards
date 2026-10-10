@@ -13,6 +13,13 @@ import {
   getPostsForNebby,
   getCategoriesForNebby,
   getNominationsForNebby,
+  createPostInDb,
+  createCategoryInDb,
+  updateCategoryInDb,
+  deleteCategoryInDb,
+  createNominationInDb,
+  createVoteInDb,
+  incrementNominationVoteCount,
 } from "@/lib/db/actions";
 import type {
   AwardCategory,
@@ -144,26 +151,32 @@ export function Providers({ children }: { children: ReactNode }) {
 
   // ── Categories (scoped to active Nebby) ──
   const addCategory = useCallback(
-    (name: string, description: string) => {
-      updateActive("categories", (prev) => {
-        const maxOrder = prev.reduce((max, c) => Math.max(max, c.displayOrder), 0);
-        const newCat: AwardCategory = {
-          id: `cat-${Date.now()}`,
-          seasonId: "season-2025",
-          name,
-          description,
-          displayOrder: maxOrder + 1,
-          enabled: true,
-        };
-        return [...prev, newCat];
+    async (name: string, description: string) => {
+      const nebby = nebbys.find((n) => n.shortCode === activeNebbyCode);
+      if (!nebby) return;
+      const maxOrder = activeData.categories.reduce(
+        (max, c) => Math.max(max, c.displayOrder),
+        0,
+      );
+      const newCat = await createCategoryInDb({
+        nebbyId: nebby.id,
+        seasonId: "season-2025",
+        name,
+        description,
+        displayOrder: maxOrder + 1,
       });
+      updateActive("categories", (prev) => [...prev, newCat]);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeNebbyCode],
+    [activeNebbyCode, activeData.categories, nebbys],
   );
 
   const updateCategory = useCallback(
-    (id: string, updates: Partial<Pick<AwardCategory, "name" | "description" | "enabled">>) => {
+    async (
+      id: string,
+      updates: Partial<Pick<AwardCategory, "name" | "description" | "enabled">>,
+    ) => {
+      await updateCategoryInDb(id, updates);
       updateActive("categories", (prev) =>
         prev.map((c) => (c.id === id ? { ...c, ...updates } : c)),
       );
@@ -173,7 +186,8 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   const removeCategory = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      await deleteCategoryInDb(id);
       updateActive("categories", (prev) => prev.filter((c) => c.id !== id));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -181,63 +195,85 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   const reorderCategory = useCallback(
-    (id: string, direction: "up" | "down") => {
-      updateActive("categories", (prev) => {
-        const sorted = [...prev].sort((a, b) => a.displayOrder - b.displayOrder);
-        const idx = sorted.findIndex((c) => c.id === id);
-        if (idx < 0) return prev;
-        const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-        if (swapIdx < 0 || swapIdx >= sorted.length) return prev;
-        const orderA = sorted[idx].displayOrder;
-        const orderB = sorted[swapIdx].displayOrder;
-        return prev.map((c) => {
+    async (id: string, direction: "up" | "down") => {
+      const sorted = [...activeData.categories].sort(
+        (a, b) => a.displayOrder - b.displayOrder,
+      );
+      const idx = sorted.findIndex((c) => c.id === id);
+      if (idx < 0) return;
+      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= sorted.length) return;
+      const orderA = sorted[idx].displayOrder;
+      const orderB = sorted[swapIdx].displayOrder;
+      await Promise.all([
+        updateCategoryInDb(sorted[idx].id, { displayOrder: orderB }),
+        updateCategoryInDb(sorted[swapIdx].id, { displayOrder: orderA }),
+      ]);
+      updateActive("categories", (prev) =>
+        prev.map((c) => {
           if (c.id === sorted[idx].id) return { ...c, displayOrder: orderB };
           if (c.id === sorted[swapIdx].id) return { ...c, displayOrder: orderA };
           return c;
-        });
-      });
+        }),
+      );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeNebbyCode],
+    [activeNebbyCode, activeData.categories],
   );
 
   // ── Awards (scoped to active Nebby) ──
   const addNomination = useCallback(
-    (params: AddNominationParams) => {
-      updateActive("nominations", (prev) => {
-        const nominatorName =
-          activeData.members[0]?.username ?? `${activeNebbyCode}-NebbyMember-01`;
-        const newNom: Nomination = {
-          id: `nom-${Date.now()}`,
-          categoryId: params.categoryId,
-          nomineeMembershipId: params.nomineeMembershipId,
-          nomineeUsername: params.nomineeUsername,
-          nomineeIsNonMember: params.nomineeIsNonMember ?? false,
-          nominatorUsername: nominatorName,
-          explanation: params.explanation,
-          photoUrl: params.photoUrl,
-          consentStatus: "accepted",
-          moderationStatus: "approved",
-          voteCount: 0,
-          createdAt: new Date().toISOString(),
-        };
-        return [...prev, newNom];
+    async (params: AddNominationParams) => {
+      const nebby = nebbys.find((n) => n.shortCode === activeNebbyCode);
+      if (!nebby) return;
+      const nominatorName =
+        activeData.members[0]?.username ?? `${activeNebbyCode}-NebbyMember-01`;
+      const newNom = await createNominationInDb({
+        nebbyId: nebby.id,
+        categoryId: params.categoryId,
+        nomineeMembershipId: params.nomineeMembershipId,
+        nomineeUsername: params.nomineeUsername,
+        nomineeIsNonMember: params.nomineeIsNonMember ?? false,
+        nominatorUsername: nominatorName,
+        explanation: params.explanation,
+        photoUrl: params.photoUrl,
       });
+      updateActive("nominations", (prev) => [...prev, newNom]);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeNebbyCode, activeData.members],
+    [activeNebbyCode, activeData.members, nebbys],
   );
 
   const castVote = useCallback(
-    (categoryId: string, nominationId: string) => {
+    async (categoryId: string, nominationId: string) => {
       updateActive("votes", (prev) => ({ ...prev, [categoryId]: nominationId }));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeNebbyCode],
   );
 
-  const submitVotes = useCallback(() => {
+  const submitVotes = useCallback(async () => {
+    const nebby = nebbys.find((n) => n.shortCode === activeNebbyCode);
+    if (!nebby) return;
     const currentVotes = activeData.votes;
+    const votedNomIds = Object.values(currentVotes);
+
+    await Promise.all(
+      votedNomIds.map(async (nominationId) => {
+        const categoryId = Object.keys(currentVotes).find(
+          (k) => currentVotes[k] === nominationId,
+        );
+        if (!categoryId) return;
+        await createVoteInDb({
+          nebbyId: nebby.id,
+          categoryId,
+          nominationId,
+          voterUserId: user?.id ?? "user-1",
+        });
+        await incrementNominationVoteCount(nominationId);
+      }),
+    );
+
     updateActive("nominations", (prev) =>
       prev.map((n) => {
         const votedNomId = currentVotes[n.categoryId];
@@ -249,7 +285,26 @@ export function Providers({ children }: { children: ReactNode }) {
     );
     updateActive("votesSubmitted", () => true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeNebbyCode, activeData.votes]);
+  }, [activeNebbyCode, activeData.votes, nebbys, user]);
+
+  // ── Posts (scoped to active Nebby) ──
+  const createPost = useCallback(
+    async (body: string) => {
+      const nebby = nebbys.find((n) => n.shortCode === activeNebbyCode);
+      if (!nebby) throw new Error("No active Nebby");
+      const authorUsername =
+        activeData.members[0]?.username ?? `${activeNebbyCode}-NebbyMember-01`;
+      const newPost = await createPostInDb({
+        nebbyId: nebby.id,
+        authorUsername,
+        body,
+      });
+      updateActive("posts", (prev) => [newPost, ...prev]);
+      return newPost;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeNebbyCode, activeData.members, nebbys],
+  );
 
   // ── Nebby management ──
   const createNebby = useCallback(
@@ -299,6 +354,7 @@ export function Providers({ children }: { children: ReactNode }) {
           activePosts: activeData.posts,
           setActiveNebbyCode,
           createNebby,
+          createPost,
         }}
       >
         <CategoriesContext.Provider

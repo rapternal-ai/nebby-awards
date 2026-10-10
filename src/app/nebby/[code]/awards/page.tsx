@@ -187,6 +187,7 @@ function NominateView({
   const [nonMemberName, setNonMemberName] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [justSubmitted, setJustSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -240,35 +241,40 @@ function NominateView({
       ? !!selectedNominee && !!photoPreview
       : !!nonMemberName.trim() && !!photoPreview;
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!canSubmit) return;
-    if (nomineeType === "member") {
-      const member = activeMembers.find((m) => m.id === selectedNominee);
-      if (!member) return;
-      addNomination({
-        categoryId: category!.id,
-        nomineeMembershipId: member.id,
-        nomineeUsername: member.username,
-        explanation,
-        photoUrl: photoPreview ?? undefined,
-      });
-    } else {
-      addNomination({
-        categoryId: category!.id,
-        nomineeMembershipId: null,
-        nomineeUsername: nonMemberName.trim(),
-        nomineeIsNonMember: true,
-        explanation,
-        photoUrl: photoPreview ?? undefined,
-      });
+    setSubmitting(true);
+    try {
+      if (nomineeType === "member") {
+        const member = activeMembers.find((m) => m.id === selectedNominee);
+        if (!member) return;
+        await addNomination({
+          categoryId: category!.id,
+          nomineeMembershipId: member.id,
+          nomineeUsername: member.username,
+          explanation,
+          photoUrl: photoPreview ?? undefined,
+        });
+      } else {
+        await addNomination({
+          categoryId: category!.id,
+          nomineeMembershipId: null,
+          nomineeUsername: nonMemberName.trim(),
+          nomineeIsNonMember: true,
+          explanation,
+          photoUrl: photoPreview ?? undefined,
+        });
+      }
+      setSelectedNominee("");
+      setNonMemberName("");
+      setExplanation("");
+      setPhotoPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setJustSubmitted(true);
+      setTimeout(() => setJustSubmitted(false), 3000);
+    } finally {
+      setSubmitting(false);
     }
-    setSelectedNominee("");
-    setNonMemberName("");
-    setExplanation("");
-    setPhotoPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    setJustSubmitted(true);
-    setTimeout(() => setJustSubmitted(false), 3000);
   }
 
   return (
@@ -443,8 +449,8 @@ function NominateView({
             )}
           </div>
           <div className="flex justify-end">
-            <Button size="sm" disabled={!canSubmit} onClick={handleSubmit}>
-              <Star className="h-3.5 w-3.5" /> Submit nomination
+            <Button size="sm" disabled={!canSubmit || submitting} onClick={handleSubmit}>
+              <Star className="h-3.5 w-3.5" /> {submitting ? "Submitting..." : "Submit nomination"}
             </Button>
           </div>
         </CardBody>
@@ -506,7 +512,7 @@ function VoteView() {
                 noms.map((nom) => (
                   <button
                     key={nom.id}
-                    onClick={() => !votesSubmitted && castVote(cat.id, nom.id)}
+                    onClick={() => !votesSubmitted && castVote(cat.id, nom.id).catch(() => {})}
                     disabled={votesSubmitted}
                     className={`w-full rounded-lg border overflow-hidden text-left transition-colors ${
                       votes[cat.id] === nom.id
@@ -557,7 +563,7 @@ function VoteView() {
           </p>
           <Button
             disabled={Object.keys(votes).length === 0}
-            onClick={submitVotes}
+            onClick={() => submitVotes().catch(() => {})}
           >
             <Vote className="h-4 w-4" /> Submit votes
           </Button>

@@ -440,10 +440,10 @@ function CategoriesManager() {
 
   const sorted = [...categories].sort((a, b) => a.displayOrder - b.displayOrder);
 
-  function handleAdd(e: React.FormEvent) {
+  async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!newName.trim()) return;
-    addCategory(newName.trim(), newDesc.trim());
+    await addCategory(newName.trim(), newDesc.trim());
     setNewName("");
     setNewDesc("");
     setShowAddForm(false);
@@ -455,9 +455,9 @@ function CategoriesManager() {
     setEditDesc(cat.description);
   }
 
-  function saveEdit() {
+  async function saveEdit() {
     if (!editingId || !editName.trim()) return;
-    updateCategory(editingId, { name: editName.trim(), description: editDesc.trim() });
+    await updateCategory(editingId, { name: editName.trim(), description: editDesc.trim() });
     setEditingId(null);
   }
 
@@ -582,7 +582,7 @@ function CategoriesManager() {
                     {/* Reorder controls */}
                     <div className="flex flex-col gap-0.5 pt-0.5">
                       <button
-                        onClick={() => reorderCategory(cat.id, "up")}
+                        onClick={() => reorderCategory(cat.id, "up").catch(() => {})}
                         disabled={idx === 0}
                         className="text-zinc-400 hover:text-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
                         aria-label="Move up"
@@ -590,7 +590,7 @@ function CategoriesManager() {
                         <ArrowUp className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => reorderCategory(cat.id, "down")}
+                        onClick={() => reorderCategory(cat.id, "down").catch(() => {})}
                         disabled={idx === sorted.length - 1}
                         className="text-zinc-400 hover:text-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
                         aria-label="Move down"
@@ -618,7 +618,7 @@ function CategoriesManager() {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() =>
-                          updateCategory(cat.id, { enabled: !cat.enabled })
+                          updateCategory(cat.id, { enabled: !cat.enabled }).catch(() => {})
                         }
                         className="p-1.5 rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
                         title={cat.enabled ? "Disable" : "Enable"}
@@ -637,7 +637,7 @@ function CategoriesManager() {
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => removeCategory(cat.id)}
+                        onClick={() => removeCategory(cat.id).catch(() => {})}
                         className="p-1.5 rounded-md text-zinc-400 hover:bg-red-50 hover:text-red-500"
                         title="Remove"
                       >

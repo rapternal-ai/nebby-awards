@@ -80,7 +80,9 @@ DATABASE_URL=postgres://nebby:nebby@localhost:5433/nebby
 - Nebbys are now persisted to Postgres and loaded on app start.
 - Creating a Nebby writes to the database and creates the founding moderator membership.
 - Members, posts, award categories, and nominations are hydrated from the database when a Nebby becomes active.
-- Votes remain in-memory for the current session only.
+- Creating a post, category, nomination, or vote now persists to Postgres.
+- Category edits, enable/disable, reorder, and deletion persist to Postgres.
+- Votes are recorded in the database when submitted and increment the nomination vote counts.
 
 ### Notes
 - If port 5432 is already in use, the Docker Compose maps Postgres to host port 5433.

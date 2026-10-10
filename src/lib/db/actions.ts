@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "./index";
 import * as schema from "./schema";
 import type {
@@ -168,4 +168,172 @@ export async function getCommentsForNebby(
     status: c.status,
     createdAt: c.createdAt.toISOString(),
   }));
+}
+
+// ── Mutations ──
+
+function generateId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export async function createPostInDb(params: {
+  nebbyId: string;
+  authorUsername: string;
+  body: string;
+}): Promise<Post> {
+  const now = new Date();
+  const id = generateId("post");
+  const [row] = await db
+    .insert(schema.posts)
+    .values({
+      id,
+      nebbyId: params.nebbyId,
+      authorUsername: params.authorUsername,
+      body: params.body,
+      status: "visible",
+      reactions: [],
+      commentCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+  return {
+    id: row.id,
+    nebbyId: row.nebbyId,
+    authorUsername: row.authorUsername,
+    body: row.body,
+    status: row.status,
+    reactions: row.reactions as unknown as Post["reactions"],
+    commentCount: row.commentCount,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export async function createCategoryInDb(params: {
+  nebbyId: string;
+  seasonId: string;
+  name: string;
+  description: string;
+  displayOrder: number;
+}): Promise<AwardCategory> {
+  const id = generateId("cat");
+  const [row] = await db
+    .insert(schema.awardCategories)
+    .values({
+      id,
+      nebbyId: params.nebbyId,
+      seasonId: params.seasonId,
+      name: params.name,
+      description: params.description,
+      displayOrder: params.displayOrder,
+      enabled: true,
+    })
+    .returning();
+  return {
+    id: row.id,
+    seasonId: row.seasonId,
+    name: row.name,
+    description: row.description,
+    displayOrder: row.displayOrder,
+    enabled: row.enabled,
+  };
+}
+
+export async function updateCategoryInDb(
+  id: string,
+  updates: Partial<{
+    name: string;
+    description: string;
+    enabled: boolean;
+    displayOrder: number;
+  }>,
+): Promise<AwardCategory> {
+  const [row] = await db
+    .update(schema.awardCategories)
+    .set(updates)
+    .where(eq(schema.awardCategories.id, id))
+    .returning();
+  return {
+    id: row.id,
+    seasonId: row.seasonId,
+    name: row.name,
+    description: row.description,
+    displayOrder: row.displayOrder,
+    enabled: row.enabled,
+  };
+}
+
+export async function deleteCategoryInDb(id: string): Promise<void> {
+  await db.delete(schema.awardCategories).where(eq(schema.awardCategories.id, id));
+}
+
+export async function createNominationInDb(params: {
+  nebbyId: string;
+  categoryId: string;
+  nomineeMembershipId: string | null;
+  nomineeUsername: string;
+  nomineeIsNonMember: boolean;
+  nominatorUsername: string;
+  explanation: string;
+  photoUrl?: string;
+}): Promise<Nomination> {
+  const id = generateId("nom");
+  const [row] = await db
+    .insert(schema.nominations)
+    .values({
+      id,
+      nebbyId: params.nebbyId,
+      categoryId: params.categoryId,
+      nomineeMembershipId: params.nomineeMembershipId,
+      nomineeUsername: params.nomineeUsername,
+      nomineeIsNonMember: params.nomineeIsNonMember,
+      nominatorUsername: params.nominatorUsername,
+      explanation: params.explanation,
+      photoUrl: params.photoUrl ?? null,
+      consentStatus: "accepted",
+      moderationStatus: "approved",
+      voteCount: 0,
+      createdAt: new Date(),
+    })
+    .returning();
+  return {
+    id: row.id,
+    categoryId: row.categoryId,
+    nomineeMembershipId: row.nomineeMembershipId,
+    nomineeUsername: row.nomineeUsername,
+    nomineeIsNonMember: row.nomineeIsNonMember,
+    nominatorUsername: row.nominatorUsername,
+    explanation: row.explanation,
+    photoUrl: row.photoUrl ?? undefined,
+    consentStatus: row.consentStatus,
+    moderationStatus: row.moderationStatus as "approved" | "removed" | "pending",
+    voteCount: row.voteCount,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export async function createVoteInDb(params: {
+  nebbyId: string;
+  categoryId: string;
+  nominationId: string;
+  voterUserId: string;
+}): Promise<void> {
+  await db.insert(schema.votes).values({
+    id: generateId("vote"),
+    nebbyId: params.nebbyId,
+    categoryId: params.categoryId,
+    nominationId: params.nominationId,
+    voterUserId: params.voterUserId,
+    createdAt: new Date(),
+  });
+}
+
+export async function incrementNominationVoteCount(
+  nominationId: string,
+): Promise<void> {
+  await db
+    .update(schema.nominations)
+    .set({ voteCount: sql`${schema.nominations.voteCount} + 1` })
+    .where(eq(schema.nominations.id, nominationId));
 }

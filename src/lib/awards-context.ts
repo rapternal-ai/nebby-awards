@@ -14,19 +14,19 @@ export interface AddNominationParams {
 
 export interface AwardsContextValue {
   nominations: Nomination[];
-  addNomination: (params: AddNominationParams) => void;
+  addNomination: (params: AddNominationParams) => Promise<void>;
   votes: Record<string, string>; // categoryId -> nominationId
-  castVote: (categoryId: string, nominationId: string) => void;
-  submitVotes: () => void;
+  castVote: (categoryId: string, nominationId: string) => Promise<void>;
+  submitVotes: () => Promise<void>;
   votesSubmitted: boolean;
 }
 
 export const AwardsContext = createContext<AwardsContextValue>({
   nominations: [],
-  addNomination: () => {},
+  addNomination: () => Promise.resolve(),
   votes: {},
-  castVote: () => {},
-  submitVotes: () => {},
+  castVote: () => Promise.resolve(),
+  submitVotes: () => Promise.resolve(),
   votesSubmitted: false,
 });
 
