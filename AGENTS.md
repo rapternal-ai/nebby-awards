@@ -85,6 +85,9 @@ DATABASE_URL=postgres://nebby:nebby@localhost:5433/nebby
 - Votes are recorded in the database when submitted and increment the nomination vote counts.
 - Join requests are persisted to Postgres; the moderator dashboard loads them from the database and approve/reject actions update the database.
 - Post reactions (thumbs up, heart, celebrate, laugh) persist to Postgres when toggled.
+- Comments on posts persist to Postgres and update the post's comment count.
+- Reports created from the feed page persist to Postgres; the moderator dashboard loads them and resolve actions persist the status change.
+- Audit trail loads from Postgres.
 
 ### Notes
 - If port 5432 is already in use, the Docker Compose maps Postgres to host port 5433.

@@ -30,15 +30,15 @@ import {
   X,
   Save,
 } from "lucide-react";
-import {
-  demoReports,
-  demoAuditLog,
-} from "@/lib/demo-data";
+
 import { useCategories } from "@/lib/categories-context";
 import { useNebbys } from "@/lib/nebby-context";
 import {
   getJoinRequestsForNebby,
   updateJoinRequestInDb,
+  getReportsForNebby,
+  resolveReportInDb,
+  getAuditEntriesForNebby,
 } from "@/lib/db/actions";
 import { timeAgo, formatDate } from "@/lib/utils";
 import type { JoinRequest, Report, AuditEntry, AwardCategory } from "@/types";
@@ -50,6 +50,8 @@ export default function ModeratePage() {
   const { activeNebby } = useNebbys();
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [joinRequestsLoaded, setJoinRequestsLoaded] = useState(false);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [reportsLoaded, setReportsLoaded] = useState(false);
 
   useEffect(() => {
     if (!activeNebby) return;
@@ -59,13 +61,18 @@ export default function ModeratePage() {
       setJoinRequests(requests);
       setJoinRequestsLoaded(true);
     });
+    getReportsForNebby(activeNebby.id).then((loaded) => {
+      if (cancelled) return;
+      setReports(loaded);
+      setReportsLoaded(true);
+    });
     return () => {
       cancelled = true;
     };
   }, [activeNebby?.id]);
 
   const pendingJoins = joinRequests.filter((r) => r.status === "pending");
-  const openReports = demoReports.filter((r) => r.status === "open");
+  const openReports = reports.filter((r) => r.status === "open");
 
   return (
     <div className="space-y-6">
@@ -131,7 +138,13 @@ export default function ModeratePage() {
           onChange={setJoinRequests}
         />
       )}
-      {activeTab === "reports" && <ReportsQueue />}
+      {activeTab === "reports" && (
+        <ReportsQueue
+          reports={reports}
+          loaded={reportsLoaded}
+          onChange={setReports}
+        />
+      )}
       {activeTab === "categories" && <CategoriesManager />}
       {activeTab === "audit" && <AuditLog />}
     </div>
@@ -317,23 +330,21 @@ function JoinRequestCard({
 
 // ── Reports Queue ──
 
-function ReportsQueue() {
-  const [reports, setReports] = useState<Report[]>(demoReports);
+function ReportsQueue({
+  reports,
+  loaded,
+  onChange,
+}: {
+  reports: Report[];
+  loaded: boolean;
+  onChange: (reports: Report[]) => void;
+}) {
   const [resolutionReason, setResolutionReason] = useState<Record<string, string>>({});
 
-  function handleResolve(id: string, action: "remove" | "dismiss") {
-    setReports((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: (action === "remove" ? "resolved" : "dismissed") as Report["status"],
-              resolvedAt: new Date().toISOString(),
-              moderatorUsername: "spf-NebbyMember-01",
-            }
-          : r,
-      ),
-    );
+  async function handleResolve(id: string, action: "remove" | "dismiss") {
+    const note = resolutionReason[id] ?? (action === "remove" ? "Removed content" : "Dismissed report");
+    const updated = await resolveReportInDb(id, note);
+    onChange(reports.map((r) => (r.id === id ? updated : r)));
   }
 
   const open = reports.filter((r) => r.status === "open");
@@ -345,7 +356,13 @@ function ReportsQueue() {
         Open reports ({open.length})
       </h3>
 
-      {open.length === 0 ? (
+      {!loaded ? (
+        <Card>
+          <CardBody className="text-center py-8">
+            <p className="text-sm text-zinc-500">Loading reports...</p>
+          </CardBody>
+        </Card>
+      ) : open.length === 0 ? (
         <Card>
           <CardBody className="text-center py-8">
             <CheckCircle2 className="mx-auto h-8 w-8 text-zinc-300 mb-2" />
@@ -402,14 +419,14 @@ function ReportsQueue() {
                   <Button
                     variant="danger"
                     size="sm"
-                    onClick={() => handleResolve(report.id, "remove")}
+                    onClick={() => handleResolve(report.id, "remove").catch(() => {})}
                   >
                     <Trash2 className="h-3.5 w-3.5" /> Remove content
                   </Button>
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => handleResolve(report.id, "dismiss")}
+                    onClick={() => handleResolve(report.id, "dismiss").catch(() => {})}
                   >
                     <Eye className="h-3.5 w-3.5" /> Dismiss
                   </Button>
@@ -686,6 +703,23 @@ function CategoriesManager() {
 // ── Audit Log ──
 
 function AuditLog() {
+  const { activeNebby } = useNebbys();
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!activeNebby) return;
+    let cancelled = false;
+    getAuditEntriesForNebby(activeNebby.id).then((loadedEntries) => {
+      if (cancelled) return;
+      setEntries(loadedEntries);
+      setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeNebby?.id]);
+
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-zinc-900">Audit trail</h3>
@@ -694,31 +728,45 @@ function AuditLog() {
       </p>
 
       <div className="space-y-2">
-        {demoAuditLog.map((entry) => (
-          <Card key={entry.id}>
-            <CardBody className="flex items-start gap-3">
-              <div className="rounded-full bg-zinc-100 p-1.5 mt-0.5">
-                <ScrollText className="h-4 w-4 text-zinc-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-zinc-900">
-                    {entry.actorUsername}
-                  </span>
-                  <Badge>
-                    {entry.action.replace(/_/g, " ")}
-                  </Badge>
-                </div>
-                <p className="text-sm text-zinc-600 mt-0.5">
-                  {entry.reason}
-                </p>
-                <p className="text-xs text-zinc-400 mt-1">
-                  {entry.targetType} &middot; {formatDate(entry.timestamp)}
-                </p>
-              </div>
+        {!loaded ? (
+          <Card>
+            <CardBody className="text-center py-8">
+              <p className="text-sm text-zinc-500">Loading audit trail...</p>
             </CardBody>
           </Card>
-        ))}
+        ) : entries.length === 0 ? (
+          <Card>
+            <CardBody className="text-center py-8">
+              <p className="text-sm text-zinc-500">No audit entries yet.</p>
+            </CardBody>
+          </Card>
+        ) : (
+          entries.map((entry) => (
+            <Card key={entry.id}>
+              <CardBody className="flex items-start gap-3">
+                <div className="rounded-full bg-zinc-100 p-1.5 mt-0.5">
+                  <ScrollText className="h-4 w-4 text-zinc-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-zinc-900">
+                      {entry.actorUsername}
+                    </span>
+                    <Badge>
+                      {entry.action.replace(/_/g, " ")}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-zinc-600 mt-0.5">
+                    {entry.reason}
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {entry.targetType} &middot; {formatDate(entry.timestamp)}
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

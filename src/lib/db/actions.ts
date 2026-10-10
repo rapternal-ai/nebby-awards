@@ -11,6 +11,8 @@ import type {
   Nomination,
   Comment,
   JoinRequest,
+  Report,
+  AuditEntry,
 } from "@/types";
 
 export async function getNebbys(): Promise<Nebby[]> {
@@ -423,5 +425,186 @@ export async function updateJoinRequestInDb(
     vouchCount: row.vouchCount,
     createdAt: row.createdAt.toISOString(),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
+  };
+}
+
+// ── Comments ──
+
+export async function createCommentInDb(params: {
+  postId: string;
+  nebbyId: string;
+  authorUsername: string;
+  body: string;
+}): Promise<Comment> {
+  const id = generateId("c");
+  const [row] = await db
+    .insert(schema.comments)
+    .values({
+      id,
+      postId: params.postId,
+      nebbyId: params.nebbyId,
+      authorUsername: params.authorUsername,
+      body: params.body,
+      status: "visible",
+      createdAt: new Date(),
+    })
+    .returning();
+  return {
+    id: row.id,
+    postId: row.postId,
+    nebbyId: row.nebbyId,
+    authorUsername: row.authorUsername,
+    body: row.body,
+    status: row.status,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export async function incrementPostCommentCount(postId: string): Promise<void> {
+  await db
+    .update(schema.posts)
+    .set({ commentCount: sql`${schema.posts.commentCount} + 1` })
+    .where(eq(schema.posts.id, postId));
+}
+
+// ── Reports ──
+
+export async function getReportsForNebby(nebbyId: string): Promise<Report[]> {
+  const rows = await db
+    .select()
+    .from(schema.reports)
+    .where(eq(schema.reports.nebbyId, nebbyId))
+    .orderBy(schema.reports.createdAt);
+  return rows.map((r) => ({
+    id: r.id,
+    nebbyId: r.nebbyId,
+    reporterUsername: r.reporterUsername,
+    targetType: r.targetType as Report["targetType"],
+    targetId: r.targetId,
+    targetPreview: "",
+    reason: r.reason,
+    status: r.status as Report["status"],
+    moderatorUsername: r.status === "resolved" ? "Moderator" : null,
+    createdAt: r.createdAt.toISOString(),
+    resolvedAt: r.status === "resolved" ? r.createdAt.toISOString() : null,
+  }));
+}
+
+export async function createReportInDb(params: {
+  nebbyId: string;
+  reporterUsername: string;
+  targetType: string;
+  targetId: string;
+  reason: string;
+}): Promise<Report> {
+  const id = generateId("rpt");
+  const [row] = await db
+    .insert(schema.reports)
+    .values({
+      id,
+      nebbyId: params.nebbyId,
+      reporterUsername: params.reporterUsername,
+      targetType: params.targetType,
+      targetId: params.targetId,
+      reason: params.reason,
+      status: "open",
+      createdAt: new Date(),
+    })
+    .returning();
+  return {
+    id: row.id,
+    nebbyId: row.nebbyId,
+    reporterUsername: row.reporterUsername,
+    targetType: row.targetType as Report["targetType"],
+    targetId: row.targetId,
+    targetPreview: "",
+    reason: row.reason,
+    status: row.status as Report["status"],
+    moderatorUsername: null,
+    createdAt: row.createdAt.toISOString(),
+    resolvedAt: null,
+  };
+}
+
+export async function resolveReportInDb(
+  id: string,
+  note: string,
+): Promise<Report> {
+  const [row] = await db
+    .update(schema.reports)
+    .set({
+      status: "resolved",
+      moderatorNote: note,
+    })
+    .where(eq(schema.reports.id, id))
+    .returning();
+  return {
+    id: row.id,
+    nebbyId: row.nebbyId,
+    reporterUsername: row.reporterUsername,
+    targetType: row.targetType as Report["targetType"],
+    targetId: row.targetId,
+    targetPreview: "",
+    reason: row.reason,
+    status: row.status as Report["status"],
+    moderatorUsername: "Moderator",
+    createdAt: row.createdAt.toISOString(),
+    resolvedAt: new Date().toISOString(),
+  };
+}
+
+// ── Audit entries ──
+
+export async function getAuditEntriesForNebby(
+  nebbyId: string,
+): Promise<AuditEntry[]> {
+  const rows = await db
+    .select()
+    .from(schema.auditEntries)
+    .where(eq(schema.auditEntries.nebbyId, nebbyId))
+    .orderBy(schema.auditEntries.createdAt);
+  return rows.map((a) => ({
+    id: a.id,
+    nebbyId: a.nebbyId,
+    actorUsername: a.actorUsername,
+    action: a.action,
+    targetType: a.targetType,
+    targetId: a.targetId,
+    reason: a.reason ?? "",
+    timestamp: a.createdAt.toISOString(),
+  }));
+}
+
+export async function createAuditEntryInDb(params: {
+  nebbyId: string;
+  actorUsername: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  reason?: string;
+}): Promise<AuditEntry> {
+  const id = generateId("audit");
+  const [row] = await db
+    .insert(schema.auditEntries)
+    .values({
+      id,
+      nebbyId: params.nebbyId,
+      actorUsername: params.actorUsername,
+      action: params.action,
+      targetType: params.targetType,
+      targetId: params.targetId,
+      reason: params.reason ?? null,
+      createdAt: new Date(),
+    })
+    .returning();
+  return {
+    id: row.id,
+    nebbyId: row.nebbyId,
+    actorUsername: row.actorUsername,
+    action: row.action,
+    targetType: row.targetType,
+    targetId: row.targetId,
+    reason: row.reason ?? "",
+    timestamp: row.createdAt.toISOString(),
   };
 }

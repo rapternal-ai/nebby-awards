@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,9 +18,14 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { demoComments } from "@/lib/demo-data";
 import { useNebbys } from "@/lib/nebby-context";
-import { updatePostReactionsInDb } from "@/lib/db/actions";
+import {
+  updatePostReactionsInDb,
+  getCommentsForNebby,
+  createCommentInDb,
+  incrementPostCommentCount,
+  createReportInDb,
+} from "@/lib/db/actions";
 import { timeAgo } from "@/lib/utils";
 import type { Post, Comment as CommentType, Reaction } from "@/types";
 
@@ -134,13 +139,30 @@ export default function FeedPage() {
 }
 
 function PostCard({ post }: { post: Post }) {
-  const { activeNebbyCode, activeMembers } = useNebbys();
+  const { activeNebbyCode, activeNebby, activeMembers } = useNebbys();
   const currentUsername = activeMembers[0]?.username ?? `${activeNebbyCode}-NebbyMember-01`;
   const [showComments, setShowComments] = useState(false);
   const [reactions, setReactions] = useState<Reaction[]>(post.reactions);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [reportReason, setReportReason] = useState("");
   const [newComment, setNewComment] = useState("");
-  const comments: CommentType[] = demoComments[post.id] ?? [];
+  const [comments, setComments] = useState<CommentType[]>([]);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!showComments || !activeNebby) return;
+    let cancelled = false;
+    getCommentsForNebby(activeNebby.id).then((all) => {
+      if (cancelled) return;
+      setComments(all.filter((c) => c.postId === post.id));
+      setCommentsLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showComments, activeNebby, post.id]);
 
   async function toggleReaction(type: string) {
     const updated = (() => {
@@ -251,14 +273,34 @@ function PostCard({ post }: { post: Post }) {
             <Textarea
               placeholder="Why are you reporting this?"
               rows={2}
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
               className="text-sm"
             />
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setShowReportDialog(false)}>
                 Cancel
               </Button>
-              <Button variant="danger" size="sm" onClick={() => setShowReportDialog(false)}>
-                Submit report
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={!reportReason.trim() || reportSubmitting}
+                onClick={async () => {
+                  if (!activeNebby || !reportReason.trim()) return;
+                  setReportSubmitting(true);
+                  await createReportInDb({
+                    nebbyId: activeNebby.id,
+                    reporterUsername: currentUsername,
+                    targetType: "post",
+                    targetId: post.id,
+                    reason: reportReason.trim(),
+                  });
+                  setReportReason("");
+                  setShowReportDialog(false);
+                  setReportSubmitting(false);
+                }}
+              >
+                {reportSubmitting ? "Submitting..." : "Submit report"}
               </Button>
             </div>
           </div>
@@ -295,7 +337,24 @@ function PostCard({ post }: { post: Post }) {
                   rows={1}
                   className="text-sm"
                 />
-                <Button size="sm" disabled={!newComment.trim()}>
+                <Button
+                  size="sm"
+                  disabled={!newComment.trim() || commentSubmitting}
+                  onClick={async () => {
+                    if (!activeNebby || !newComment.trim()) return;
+                    setCommentSubmitting(true);
+                    const comment = await createCommentInDb({
+                      postId: post.id,
+                      nebbyId: activeNebby.id,
+                      authorUsername: currentUsername,
+                      body: newComment.trim(),
+                    });
+                    await incrementPostCommentCount(post.id);
+                    setComments((prev) => [...prev, comment]);
+                    setNewComment("");
+                    setCommentSubmitting(false);
+                  }}
+                >
                   <Send className="h-3.5 w-3.5" />
                 </Button>
               </div>
