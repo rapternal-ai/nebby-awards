@@ -14,12 +14,55 @@ export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
   // Wait one tick so the container is fully in the DOM
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!query.trim() || !mapInstanceRef.current) return;
+    setSearching(true);
+    setSearchError("");
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query.trim())}&limit=1`,
+        { headers: { "Accept-Language": "en" } },
+      );
+      const data = await response.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        setSearchError("Address not found. Try a different search.");
+        return;
+      }
+      const result = data[0];
+      const lat = parseFloat(result.lat);
+      const lon = parseFloat(result.lon);
+      const boundingbox = result.boundingbox;
+      const map = mapInstanceRef.current;
+      if (boundingbox && boundingbox.length === 4) {
+        const southWest = L.latLng(
+          parseFloat(boundingbox[0]),
+          parseFloat(boundingbox[2]),
+        );
+        const northEast = L.latLng(
+          parseFloat(boundingbox[1]),
+          parseFloat(boundingbox[3]),
+        );
+        map.fitBounds(L.latLngBounds(southWest, northEast), { maxZoom: 16 });
+      } else {
+        map.flyTo([lat, lon], 16);
+      }
+    } catch {
+      setSearchError("Search failed. Please try again.");
+    } finally {
+      setSearching(false);
+    }
+  }
 
   useEffect(() => {
     if (!mounted || !mapRef.current) return;
@@ -114,5 +157,33 @@ export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
 
-  return <div ref={mapRef} className="h-full w-full" />;
+  return (
+    <div className="relative h-full w-full">
+      <form
+        onSubmit={handleSearch}
+        className="absolute top-3 left-3 right-3 z-[1000] flex gap-2 rounded-lg bg-white/95 p-2 shadow-md backdrop-blur-sm"
+      >
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search an address or neighborhood..."
+          className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={searching || !query.trim()}
+          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+        >
+          {searching ? "..." : "Search"}
+        </button>
+      </form>
+      {searchError && (
+        <div className="absolute top-16 left-3 right-3 z-[1000] rounded-lg bg-red-50 p-2 text-sm text-red-600 shadow-sm">
+          {searchError}
+        </div>
+      )}
+      <div ref={mapRef} className="h-full w-full" />
+    </div>
+  );
 }
