@@ -20,6 +20,7 @@ import {
   createNominationInDb,
   createVoteInDb,
   incrementNominationVoteCount,
+  DEFAULT_AWARD_CATEGORIES,
 } from "@/lib/db/actions";
 import type {
   AwardCategory,
@@ -317,6 +318,16 @@ export function Providers({ children }: { children: ReactNode }) {
         boundary: params.boundary,
         creatorId: user?.id ?? "user-1",
       });
+      const defaultCategories: AwardCategory[] =
+        DEFAULT_AWARD_CATEGORIES.map((cat, index) => ({
+          id: `cat-${params.shortCode}-${index + 1}`,
+          seasonId: "season-2025",
+          name: cat.name,
+          description: cat.description,
+          displayOrder: index + 1,
+          enabled: true,
+        }));
+
       setNebbys((prev) => [...prev, newNebby]);
       setActiveNebbyCode(params.shortCode);
       setNebbyDataMap((prev) => ({
@@ -335,6 +346,7 @@ export function Providers({ children }: { children: ReactNode }) {
               approvedAt: new Date().toISOString(),
             },
           ],
+          categories: defaultCategories,
           loaded: true,
         },
       }));

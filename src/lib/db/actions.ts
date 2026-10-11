@@ -63,6 +63,21 @@ export async function createNebbyInDb(params: {
     approvedAt: now,
   });
 
+  // Seed default award categories for the new Nebby
+  if (DEFAULT_AWARD_CATEGORIES.length > 0) {
+    await db.insert(schema.awardCategories).values(
+      DEFAULT_AWARD_CATEGORIES.map((cat, index) => ({
+        id: generateId("cat"),
+        nebbyId: row.id,
+        seasonId: DEFAULT_CATEGORY_SEASON,
+        name: cat.name,
+        description: cat.description,
+        displayOrder: index + 1,
+        enabled: true,
+      })),
+    );
+  }
+
   return {
     id: row.id,
     shortCode: row.shortCode,
@@ -179,6 +194,35 @@ export async function getCommentsForNebby(
 function generateId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+const DEFAULT_CATEGORY_SEASON = "season-2025";
+
+export const DEFAULT_AWARD_CATEGORIES = [
+  {
+    name: "Neighborhood MVP",
+    description: "The neighbor who goes above and beyond for everyone.",
+  },
+  {
+    name: "Best Lawn Care",
+    description: "The yard that makes the whole block look good.",
+  },
+  {
+    name: "Best Home Garden",
+    description: "A garden that brings color and life to the neighborhood.",
+  },
+  {
+    name: "Best Block Decor",
+    description: "The home or yard that brightens up the whole street.",
+  },
+  {
+    name: "Always Has the Right Tool",
+    description: "Need a ladder, drill, or obscure wrench? They've got it.",
+  },
+  {
+    name: "Neighborhood Watch Hero",
+    description: "Keeps an eye out and helps everyone feel safe.",
+  },
+];
 
 export async function createPostInDb(params: {
   nebbyId: string;

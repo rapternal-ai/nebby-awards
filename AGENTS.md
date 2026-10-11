@@ -78,7 +78,7 @@ DATABASE_URL=postgres://nebby:nebby@localhost:5433/nebby
 
 ### Database-backed features
 - Nebbys are now persisted to Postgres and loaded on app start.
-- Creating a Nebby writes to the database and creates the founding moderator membership.
+- Creating a Nebby writes to the database, creates the founding moderator membership, and seeds 6 default award categories.
 - Members, posts, award categories, and nominations are hydrated from the database when a Nebby becomes active.
 - Creating a post, category, nomination, or vote now persists to Postgres.
 - Category edits, enable/disable, reorder, and deletion persist to Postgres.
