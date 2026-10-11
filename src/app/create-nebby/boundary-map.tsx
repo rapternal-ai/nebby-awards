@@ -159,29 +159,34 @@ export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
   return (
     <div className="relative h-full w-full">
       <div
-        className="absolute top-3 left-3 right-3 z-[1000] flex gap-2 rounded-lg bg-white/95 p-2 shadow-md backdrop-blur-sm"
+        className="absolute top-3 left-3 right-3 z-[1000] rounded-lg bg-white/95 p-3 shadow-md backdrop-blur-sm"
       >
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSearch();
-            }
-          }}
-          placeholder="Search an address or neighborhood..."
-          className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none"
-        />
-        <button
-          type="button"
-          disabled={searching || !query.trim()}
-          onClick={handleSearch}
-          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {searching ? "..." : "Search"}
-        </button>
+        <label className="mb-1 block text-xs font-medium text-zinc-600">
+          Search by ZIP code to find your area
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSearch();
+              }
+            }}
+            placeholder="e.g. 15213"
+            className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none"
+          />
+          <button
+            type="button"
+            disabled={searching || !query.trim()}
+            onClick={handleSearch}
+            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {searching ? "..." : "Search"}
+          </button>
+        </div>
       </div>
       {searchError && (
         <div className="absolute top-16 left-3 right-3 z-[1000] rounded-lg bg-red-50 p-2 text-sm text-red-600 shadow-sm">
