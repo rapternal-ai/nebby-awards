@@ -322,6 +322,7 @@ function PostCard({ post }: { post: Post }) {
                   currentUsername={currentUsername}
                   activeNebby={activeNebby}
                   postId={post.id}
+                  depth={0}
                   replyingTo={replyingTo}
                   setReplyingTo={setReplyingTo}
                   replyText={replyText}
@@ -383,6 +384,7 @@ function CommentThread({
   currentUsername,
   activeNebby,
   postId,
+  depth,
   replyingTo,
   setReplyingTo,
   replyText,
@@ -397,6 +399,7 @@ function CommentThread({
   currentUsername: string;
   activeNebby: { id: string } | undefined;
   postId: string;
+  depth: number;
   replyingTo: string | null;
   setReplyingTo: (id: string | null) => void;
   replyText: string;
@@ -408,6 +411,7 @@ function CommentThread({
 }) {
   const replies = allComments.filter((c) => c.parentCommentId === comment.id);
   const isReplying = replyingTo === comment.id;
+  const canReply = depth < 2;
 
   async function submitReply() {
     if (!activeNebby || !replyText.trim()) return;
@@ -442,17 +446,19 @@ function CommentThread({
             </div>
             <p className="text-sm text-zinc-600 mt-0.5">{comment.body}</p>
           </div>
-          <button
-            onClick={() => {
-              setReplyingTo(isReplying ? null : comment.id);
-              setReplyText("");
-            }}
-            className="mt-1 text-xs text-emerald-600 hover:underline"
-          >
-            {isReplying ? "Cancel reply" : "Reply"}
-          </button>
+          {canReply && (
+            <button
+              onClick={() => {
+                setReplyingTo(isReplying ? null : comment.id);
+                setReplyText("");
+              }}
+              className="mt-1 text-xs text-emerald-600 hover:underline"
+            >
+              {isReplying ? "Cancel reply" : "Reply"}
+            </button>
+          )}
 
-          {isReplying && (
+          {isReplying && canReply && (
             <div className="mt-2 flex items-start gap-2">
               <Avatar username={currentUsername} size="sm" />
               <div className="flex-1 flex gap-2">
@@ -486,6 +492,7 @@ function CommentThread({
               currentUsername={currentUsername}
               activeNebby={activeNebby}
               postId={postId}
+              depth={depth + 1}
               replyingTo={replyingTo}
               setReplyingTo={setReplyingTo}
               replyText={replyText}
