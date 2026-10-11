@@ -20,8 +20,8 @@ import {
   createNominationInDb,
   createVoteInDb,
   incrementNominationVoteCount,
-  DEFAULT_AWARD_CATEGORIES,
 } from "@/lib/db/actions";
+import { DEFAULT_AWARD_CATEGORIES } from "@/lib/default-categories";
 import type {
   AwardCategory,
   Nomination,
