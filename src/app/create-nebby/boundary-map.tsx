@@ -24,8 +24,7 @@ export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
     return () => setMounted(false);
   }, []);
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSearch() {
     if (!query.trim() || !mapInstanceRef.current) return;
     setSearching(true);
     setSearchError("");
@@ -159,25 +158,31 @@ export default function BoundaryMap({ onBoundaryChange }: BoundaryMapProps) {
 
   return (
     <div className="relative h-full w-full">
-      <form
-        onSubmit={handleSearch}
+      <div
         className="absolute top-3 left-3 right-3 z-[1000] flex gap-2 rounded-lg bg-white/95 p-2 shadow-md backdrop-blur-sm"
       >
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleSearch();
+            }
+          }}
           placeholder="Search an address or neighborhood..."
           className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none"
         />
         <button
-          type="submit"
+          type="button"
           disabled={searching || !query.trim()}
+          onClick={handleSearch}
           className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {searching ? "..." : "Search"}
         </button>
-      </form>
+      </div>
       {searchError && (
         <div className="absolute top-16 left-3 right-3 z-[1000] rounded-lg bg-red-50 p-2 text-sm text-red-600 shadow-sm">
           {searchError}
