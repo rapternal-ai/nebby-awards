@@ -150,6 +150,9 @@ function PostCard({ post }: { post: Post }) {
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [replySubmitting, setReplySubmitting] = useState(false);
 
   useEffect(() => {
     if (!showComments || !activeNebby) return;
@@ -309,24 +312,32 @@ function PostCard({ post }: { post: Post }) {
         {/* Comments */}
         {showComments && (
           <div className="mt-3 space-y-3 border-t border-zinc-100 pt-3">
-            {comments.map((c) => (
-              <div key={c.id} className="flex items-start gap-2">
-                <Avatar username={c.authorUsername} size="sm" />
-                <div className="flex-1 rounded-lg bg-zinc-50 px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-700">
-                      {c.authorUsername}
-                    </span>
-                    <span className="text-xs text-zinc-400">
-                      {timeAgo(c.createdAt)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-zinc-600 mt-0.5">{c.body}</p>
-                </div>
-              </div>
-            ))}
+            {comments
+              .filter((c) => !c.parentCommentId)
+              .map((comment) => (
+                <CommentThread
+                  key={comment.id}
+                  comment={comment}
+                  allComments={comments}
+                  currentUsername={currentUsername}
+                  activeNebby={activeNebby}
+                  postId={post.id}
+                  replyingTo={replyingTo}
+                  setReplyingTo={setReplyingTo}
+                  replyText={replyText}
+                  setReplyText={setReplyText}
+                  replySubmitting={replySubmitting}
+                  setReplySubmitting={setReplySubmitting}
+                  onReply={(newComment) =>
+                    setComments((prev) => [...prev, newComment])
+                  }
+                  onCommentCountChange={() =>
+                    incrementPostCommentCount(post.id)
+                  }
+                />
+              ))}
 
-            {/* New comment input */}
+            {/* New top-level comment input */}
             <div className="flex items-start gap-2">
               <Avatar username={currentUsername} size="sm" />
               <div className="flex-1 flex gap-2">
@@ -363,5 +374,130 @@ function PostCard({ post }: { post: Post }) {
         )}
       </CardBody>
     </Card>
+  );
+}
+
+function CommentThread({
+  comment,
+  allComments,
+  currentUsername,
+  activeNebby,
+  postId,
+  replyingTo,
+  setReplyingTo,
+  replyText,
+  setReplyText,
+  replySubmitting,
+  setReplySubmitting,
+  onReply,
+  onCommentCountChange,
+}: {
+  comment: CommentType;
+  allComments: CommentType[];
+  currentUsername: string;
+  activeNebby: { id: string } | undefined;
+  postId: string;
+  replyingTo: string | null;
+  setReplyingTo: (id: string | null) => void;
+  replyText: string;
+  setReplyText: (text: string) => void;
+  replySubmitting: boolean;
+  setReplySubmitting: (v: boolean) => void;
+  onReply: (comment: CommentType) => void;
+  onCommentCountChange: () => void | Promise<void>;
+}) {
+  const replies = allComments.filter((c) => c.parentCommentId === comment.id);
+  const isReplying = replyingTo === comment.id;
+
+  async function submitReply() {
+    if (!activeNebby || !replyText.trim()) return;
+    setReplySubmitting(true);
+    const reply = await createCommentInDb({
+      postId,
+      nebbyId: activeNebby.id,
+      authorUsername: currentUsername,
+      body: replyText.trim(),
+      parentCommentId: comment.id,
+    });
+    await onCommentCountChange();
+    onReply(reply);
+    setReplyText("");
+    setReplyingTo(null);
+    setReplySubmitting(false);
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-start gap-2">
+        <Avatar username={comment.authorUsername} size="sm" />
+        <div className="flex-1">
+          <div className="rounded-lg bg-zinc-50 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-zinc-700">
+                {comment.authorUsername}
+              </span>
+              <span className="text-xs text-zinc-400">
+                {timeAgo(comment.createdAt)}
+              </span>
+            </div>
+            <p className="text-sm text-zinc-600 mt-0.5">{comment.body}</p>
+          </div>
+          <button
+            onClick={() => {
+              setReplyingTo(isReplying ? null : comment.id);
+              setReplyText("");
+            }}
+            className="mt-1 text-xs text-emerald-600 hover:underline"
+          >
+            {isReplying ? "Cancel reply" : "Reply"}
+          </button>
+
+          {isReplying && (
+            <div className="mt-2 flex items-start gap-2">
+              <Avatar username={currentUsername} size="sm" />
+              <div className="flex-1 flex gap-2">
+                <Textarea
+                  placeholder="Write a reply..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  rows={1}
+                  className="text-sm"
+                />
+                <Button
+                  size="sm"
+                  disabled={!replyText.trim() || replySubmitting}
+                  onClick={submitReply}
+                >
+                  <Send className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {replies.length > 0 && (
+        <div className="ml-8 pl-4 border-l-2 border-zinc-100 space-y-2">
+          {replies.map((reply) => (
+            <CommentThread
+              key={reply.id}
+              comment={reply}
+              allComments={allComments}
+              currentUsername={currentUsername}
+              activeNebby={activeNebby}
+              postId={postId}
+              replyingTo={replyingTo}
+              setReplyingTo={setReplyingTo}
+              replyText={replyText}
+              setReplyText={setReplyText}
+              replySubmitting={replySubmitting}
+              setReplySubmitting={setReplySubmitting}
+              onReply={onReply}
+              onCommentCountChange={onCommentCountChange}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

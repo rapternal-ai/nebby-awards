@@ -169,6 +169,7 @@ export async function getCommentsForNebby(
     authorUsername: c.authorUsername,
     body: c.body,
     status: c.status,
+    parentCommentId: c.parentCommentId ?? null,
     createdAt: c.createdAt.toISOString(),
   }));
 }
@@ -435,6 +436,7 @@ export async function createCommentInDb(params: {
   nebbyId: string;
   authorUsername: string;
   body: string;
+  parentCommentId?: string | null;
 }): Promise<Comment> {
   const id = generateId("c");
   const [row] = await db
@@ -443,6 +445,7 @@ export async function createCommentInDb(params: {
       id,
       postId: params.postId,
       nebbyId: params.nebbyId,
+      parentCommentId: params.parentCommentId ?? null,
       authorUsername: params.authorUsername,
       body: params.body,
       status: "visible",
@@ -456,6 +459,7 @@ export async function createCommentInDb(params: {
     authorUsername: row.authorUsername,
     body: row.body,
     status: row.status,
+    parentCommentId: row.parentCommentId ?? null,
     createdAt: row.createdAt.toISOString(),
   };
 }

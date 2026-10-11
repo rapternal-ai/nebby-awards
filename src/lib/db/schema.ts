@@ -95,6 +95,7 @@ export const comments = pgTable("comments", {
   nebbyId: text("nebby_id")
     .notNull()
     .references(() => nebbys.id, { onDelete: "cascade" }),
+  parentCommentId: text("parent_comment_id"),
   authorUsername: text("author_username").notNull(),
   body: text("body").notNull(),
   status: postStatusEnum("status").notNull().default("visible"),

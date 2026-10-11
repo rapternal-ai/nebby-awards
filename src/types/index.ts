@@ -76,6 +76,7 @@ export interface Comment {
   authorUsername: string;
   body: string;
   status: "visible" | "hidden" | "removed";
+  parentCommentId?: string | null;
   createdAt: string;
 }
 
