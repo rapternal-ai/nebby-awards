@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Nebby Awards",
+  title: "Nebby Awards",
   description:
     "A neighborhood community platform with anonymous forums and annual community-voted awards.",
 };
