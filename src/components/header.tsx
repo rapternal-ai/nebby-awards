@@ -46,9 +46,9 @@ export function Header() {
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         {/* Logo + Nebby picker */}
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2 font-bold text-emerald-700">
+          <Link href="/" aria-label="Nebby Awards" className="flex items-center gap-2 font-bold text-emerald-700">
             <Shield className="h-5 w-5" />
-            <span className="text-lg">Nebby</span>
+            <span className="text-lg">Nebby Awards</span>
           </Link>
 
           {/* Nebby picker dropdown */}
